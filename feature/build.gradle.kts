@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "tmh.nhoctax.githubusers.feature"
-    compileSdk = 37
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26
