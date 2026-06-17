@@ -26,3 +26,4 @@ rootProject.name = "GithubUsers"
 include(":app")
 include(":core")
 include(":feature")
+include(":baselineprofile")

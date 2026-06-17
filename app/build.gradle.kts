@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.jetbrains.kotlin.plugin.serialization)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -58,6 +59,7 @@ android {
 dependencies {
     implementation(project(":core"))
     implementation(project(":feature"))
+    implementation(libs.androidx.profileinstaller)
 
     // Koin
     implementation(libs.koin.android)
@@ -109,6 +111,7 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.runner)
+    "baselineProfile"(project(":baselineprofile"))
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     "ksp"(libs.androidx.room.compiler)
