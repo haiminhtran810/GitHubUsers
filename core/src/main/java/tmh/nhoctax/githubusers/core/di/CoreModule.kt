@@ -13,7 +13,6 @@ val coreModule = module {
 
     single {
         GsonBuilder()
-            .setLenient()
             .create()
     }
 
