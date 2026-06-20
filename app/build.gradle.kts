@@ -56,8 +56,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.navigation.compose)
     implementation(project(":core"))
-    implementation(project(":feature"))
+    implementation(project(":feature:user"))
 
     // Koin
     implementation(libs.koin.android)
