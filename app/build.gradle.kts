@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(project(":core"))
     implementation(project(":feature:user"))
+    implementation(project(":feature:favorites"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.accompanist.permissions)
