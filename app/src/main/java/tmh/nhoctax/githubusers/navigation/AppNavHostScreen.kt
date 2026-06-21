@@ -15,12 +15,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import tmh.nhoctax.githubusers.feature.favorites.navigation.FavoriteDestination
+import tmh.nhoctax.githubusers.feature.favorites.navigation.favoriteNavGraph
+import tmh.nhoctax.githubusers.feature.user.navigation.UserListDestination
+import tmh.nhoctax.githubusers.feature.user.navigation.usersNavGraph
 
 @Composable
 fun AppNavHostScreen() {
@@ -29,26 +33,26 @@ fun AppNavHostScreen() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    //
-    val showBottomBar = currentDestination?.route in listOf("users", "favorites")
+    val showBottomBar = currentDestination?.hasRoute<UserListDestination>() == true ||
+            currentDestination?.hasRoute<FavoriteDestination>() == true
 
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
                     NavigationBarItem(
-                        selected = currentDestination?.hierarchy?.any { it.route == "users" } == true,
+                        selected = currentDestination.hierarchy.any { it.hasRoute<UserListDestination>() },
                         onClick = {
-                            navController.navigateBottomBarItem("users")
+                            navController.navigateBottomBarItem(UserListDestination)
                         },
                         icon = { Icon(Icons.Default.Person, contentDescription = "Users") },
                         label = { Text("Users") }
                     )
 
                     NavigationBarItem(
-                        selected = currentDestination?.hierarchy?.any { it.route == "favorites" } == true,
+                        selected = currentDestination.hierarchy.any { it.hasRoute<FavoriteDestination>() },
                         onClick = {
-                            navController.navigateBottomBarItem("favorites")
+                            navController.navigateBottomBarItem(FavoriteDestination)
                         },
                         icon = { Icon(Icons.Default.Favorite, contentDescription = "Favorites") },
                         label = { Text("Favorites") }
@@ -62,23 +66,15 @@ fun AppNavHostScreen() {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            NavHost(navController = navController, startDestination = "users") {
-                composable("users") {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Text("Users Screen"); val viewModel = androidx.hilt.navigation.compose.hiltViewModel<tmh.nhoctax.githubusers.feature.user.presentation.userlist.UserListViewModel>()
-                    }
-                }
-                composable("favorites") {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        Text("Favorites Screen")
-                    }
-                }
+            NavHost(navController = navController, startDestination = UserListDestination) {
+                usersNavGraph()
+                favoriteNavGraph()
             }
         }
     }
 }
 
-private fun NavController.navigateBottomBarItem(route: String) {
+private fun <T : Any> NavController.navigateBottomBarItem(route: T) {
     navigate(route) {
         // Pop up to the start destination of the graph to
         // avoid building up a large stack of destinations

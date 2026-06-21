@@ -13,10 +13,6 @@ class UserRepositoryImpl @Inject constructor(
         return api.getUsers().map { it.toDomain() }
     }
 
-    override suspend fun searchUsers(query: String): List<User> {
-        return api.searchUsers(query).items?.map { it.toDomain() } ?: emptyList()
-    }
-
     override suspend fun getUserDetail(username: String): User {
         return api.getUserDetail(username).toDomain()
     }

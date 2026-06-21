@@ -35,7 +35,9 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.hilt.android)
+    implementation(libs.androidx.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
 
     implementation(platform(libs.androidx.compose.bom))

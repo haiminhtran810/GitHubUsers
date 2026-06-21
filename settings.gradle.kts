@@ -25,6 +25,7 @@ dependencyResolutionManagement {
 rootProject.name = "GithubUsers"
 include(":app")
 include(":core")
+include(":core:common")
 include(":feature")
 include(":feature:auth")
 include(":feature:user")
