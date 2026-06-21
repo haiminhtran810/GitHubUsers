@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.jetbrains.kotlin.plugin.serialization)
+    id("com.google.dagger.hilt.android")
 }
 
 android {
@@ -32,17 +33,14 @@ android {
     flavorDimensions += listOf("env")
     productFlavors {
         create("dev") {
-            dimension = "env"
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
         }
         create("stg") {
-            dimension = "env"
             applicationIdSuffix = ".stg"
             versionNameSuffix = "-stg"
         }
         create("prod") {
-            dimension = "env"
         }
     }
 
@@ -56,13 +54,12 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
     implementation(libs.androidx.navigation.compose)
     implementation(project(":core"))
     implementation(project(":feature:user"))
-
-    // Koin
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.compose)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.accompanist.permissions)
@@ -85,7 +82,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.room.ktx)

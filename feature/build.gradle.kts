@@ -1,6 +1,5 @@
 plugins {
     alias(libs.plugins.android.library)
-    
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.jetbrains.kotlin.plugin.serialization)
 }
@@ -58,8 +57,6 @@ dependencies {
     implementation(libs.coil.compose)
 
     // Koin
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.compose)
     
     // Retrofit & Gson
     implementation(libs.retrofit)
