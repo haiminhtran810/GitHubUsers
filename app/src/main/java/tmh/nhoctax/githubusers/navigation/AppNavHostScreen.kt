@@ -32,7 +32,6 @@ fun AppNavHostScreen() {
     //
     val showBottomBar = currentDestination?.route in listOf("users", "favorites")
 
-
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
@@ -66,7 +65,7 @@ fun AppNavHostScreen() {
             NavHost(navController = navController, startDestination = "users") {
                 composable("users") {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        Text("Users Screen")
+                        Text("Users Screen"); val viewModel = androidx.hilt.navigation.compose.hiltViewModel<tmh.nhoctax.githubusers.feature.user.presentation.userlist.UserListViewModel>()
                     }
                 }
                 composable("favorites") {

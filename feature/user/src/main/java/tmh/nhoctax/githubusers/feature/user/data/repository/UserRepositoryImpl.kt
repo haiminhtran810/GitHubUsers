@@ -4,8 +4,9 @@ import tmh.nhoctax.githubusers.feature.user.data.remote.UserApi
 import tmh.nhoctax.githubusers.feature.user.data.remote.model.toDomain
 import tmh.nhoctax.githubusers.feature.user.domain.model.User
 import tmh.nhoctax.githubusers.feature.user.domain.repository.UserRepository
+import javax.inject.Inject
 
-class UserRepositoryImpl(
+class UserRepositoryImpl @Inject constructor(
     private val api: UserApi
 ) : UserRepository {
     override suspend fun getUsers(): List<User> {
@@ -13,7 +14,7 @@ class UserRepositoryImpl(
     }
 
     override suspend fun searchUsers(query: String): List<User> {
-        return api.searchUsers(query).items.map { it.toDomain() }
+        return api.searchUsers(query).items?.map { it.toDomain() } ?: emptyList()
     }
 
     override suspend fun getUserDetail(username: String): User {

@@ -53,8 +53,6 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
 
     implementation(libs.coil.compose)
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.compose)
     implementation(libs.retrofit)
     implementation(libs.gson)
     implementation(libs.converter.gson)

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.jetbrains.kotlin.plugin.serialization)
 }
 
@@ -34,6 +35,8 @@ android {
 
 dependencies {
     implementation(project(":core"))
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -53,8 +56,6 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
 
     implementation(libs.coil.compose)
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.compose)
     implementation(libs.retrofit)
     implementation(libs.gson)
     implementation(libs.converter.gson)
