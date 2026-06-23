@@ -9,7 +9,7 @@ data class UserEntity(
     @SerializedName("login")
     val login: String,
     @SerializedName("avatar_url")
-    val avatarUrl: String
+    val avatarUrl: String,
 )
 
 fun UserEntity.toDomain(): User {

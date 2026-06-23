@@ -3,6 +3,7 @@ package tmh.nhoctax.githubusers.feature.user.data.remote
 import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
+import tmh.nhoctax.githubusers.feature.user.data.remote.model.UserDetailEntity
 import tmh.nhoctax.githubusers.feature.user.data.remote.model.UserEntity
 
 interface UserApi {
@@ -15,5 +16,5 @@ interface UserApi {
     @GET("users/{username}")
     suspend fun getUserDetail(
         @Path("username") username: String
-    ): UserEntity
+    ): UserDetailEntity
 }

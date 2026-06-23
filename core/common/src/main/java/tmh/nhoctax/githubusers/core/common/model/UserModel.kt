@@ -6,5 +6,7 @@ data class UserModel(
     val username: String = "",
     val avatarUrl: String = "",
     val url: String = "",
+    val followers: Int? = null,
+    val bio: String? = "",
     val isFavorite: Boolean = false,
 )

@@ -1,8 +1,9 @@
 package tmh.nhoctax.githubusers.feature.user.data.remote.model
 
 import com.google.gson.annotations.SerializedName
+import tmh.nhoctax.githubusers.feature.user.domain.model.User
 
-data class UserDetailResponse(
+data class UserDetailEntity(
     @SerializedName("avatar_url")
     val avatarUrl: String? = null,
     @SerializedName("bio")
@@ -28,7 +29,7 @@ data class UserDetailResponse(
     @SerializedName("html_url")
     val htmlUrl: String? = null,
     @SerializedName("id")
-    val id: Int? = null,
+    val id: Int,
     @SerializedName("location")
     val location: String? = null,
     @SerializedName("login")
@@ -62,3 +63,12 @@ data class UserDetailResponse(
     @SerializedName("user_view_type")
     val userViewType: String? = null,
 )
+
+
+fun UserDetailEntity.toDomain(): User {
+    return User(
+        id = id,
+        username = login.orEmpty(),
+        avatarUrl = avatarUrl.orEmpty()
+    )
+}
