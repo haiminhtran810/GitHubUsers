@@ -26,6 +26,7 @@ rootProject.name = "GithubUsers"
 include(":app")
 include(":core")
 include(":core:common")
+include(":core:network")
 include(":feature")
 include(":feature:auth")
 include(":feature:user")
