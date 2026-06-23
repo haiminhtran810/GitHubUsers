@@ -50,17 +50,23 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
 dependencies {
+
+    implementation(project(":core"))
+    implementation(project(":core:common"))
+    implementation(project(":core:network"))
+    implementation(project(":feature:user"))
+    implementation(project(":feature:favorites"))
+
+    implementation(libs.timber)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
     implementation(libs.androidx.navigation.compose)
-    implementation(project(":core"))
-    implementation(project(":feature:user"))
-    implementation(project(":feature:favorites"))
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.accompanist.permissions)

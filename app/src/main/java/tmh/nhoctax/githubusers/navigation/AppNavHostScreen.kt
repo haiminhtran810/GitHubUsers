@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -23,16 +24,21 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import tmh.nhoctax.githubusers.feature.favorites.navigation.FavoriteDestination
 import tmh.nhoctax.githubusers.feature.favorites.navigation.favoriteNavGraph
+import tmh.nhoctax.githubusers.feature.user.R
 import tmh.nhoctax.githubusers.feature.user.navigation.UserListDestination
 import tmh.nhoctax.githubusers.feature.user.navigation.usersNavGraph
 
 @Composable
 fun AppNavHostScreen() {
+    // Create and remember a NavController to manage app navigation
     val navController = rememberNavController()
-    // Get the current information screen
+    // Observe the navigation state to determine the current destination.
+    // This triggers recomposition whenever the user navigates to a new screen.
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
+    // Determine if the bottom navigation bar should be visible.
+    // We only show it on the top-level destinations (User List and Favorites).
     val showBottomBar = currentDestination?.hasRoute<UserListDestination>() == true ||
             currentDestination?.hasRoute<FavoriteDestination>() == true
 
@@ -46,7 +52,7 @@ fun AppNavHostScreen() {
                             navController.navigateBottomBarItem(UserListDestination)
                         },
                         icon = { Icon(Icons.Default.Person, contentDescription = "Users") },
-                        label = { Text("Users") }
+                        label = { Text(stringResource(tmh.nhoctax.githubusers.R.string.user)) }
                     )
 
                     NavigationBarItem(
@@ -55,7 +61,7 @@ fun AppNavHostScreen() {
                             navController.navigateBottomBarItem(FavoriteDestination)
                         },
                         icon = { Icon(Icons.Default.Favorite, contentDescription = "Favorites") },
-                        label = { Text("Favorites") }
+                        label = { Text(stringResource(tmh.nhoctax.githubusers.R.string.favorite)) }
                     )
                 }
             }
@@ -83,7 +89,7 @@ private fun <T : Any> NavController.navigateBottomBarItem(route: T) {
             saveState = true // Save the state of popped destinations
         }
         // Avoid multiple copies of the same destination when
-        // reselecting the same item
+        // Reselecting the same item
         launchSingleTop = true
         // Restore state when reselecting a previously selected item
         restoreState = true
