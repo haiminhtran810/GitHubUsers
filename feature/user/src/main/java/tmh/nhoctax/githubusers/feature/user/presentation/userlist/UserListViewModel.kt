@@ -12,6 +12,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import tmh.nhoctax.githubusers.core.common.dispatcher.AppCoroutineDispatchers
+import tmh.nhoctax.githubusers.core.common.model.ResultWrapper
 import tmh.nhoctax.githubusers.feature.user.domain.usecase.GetUsersUseCase
 import javax.inject.Inject
 
@@ -42,17 +43,34 @@ class UserListViewModel @Inject constructor(
 
     private fun loadUsers() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
-            try {
-                val users = getUsersUseCase()
-                Timber.tag("UserList: $users")
-                _state.update { it.copy(isLoading = false, users = users) }
-            } catch (e: Exception) {
-                _state.update {
-                    it.copy(
-                        isLoading = false,
-                        error = e.message ?: "An unexpected error occurred"
-                    )
+            getUsersUseCase().collect { result ->
+                when (result) {
+                    is ResultWrapper.InProgress -> {
+                        _state.update { it.copy(isLoading = true, error = null) }
+                    }
+
+                    is ResultWrapper.Success -> {
+                        Timber.d("UserList: ${result.data}")
+                        _state.update { it.copy(isLoading = false, users = result.data) }
+                    }
+
+                    is ResultWrapper.GenericError -> {
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                error = result.message
+                            )
+                        }
+                    }
+
+                    is ResultWrapper.NetworkError -> {
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                error = "Network Error"
+                            )
+                        }
+                    }
                 }
             }
         }
