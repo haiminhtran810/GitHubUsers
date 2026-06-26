@@ -36,7 +36,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import tmh.nhoctax.githubusers.feature.user.domain.model.User
+import tmh.nhoctax.githubusers.core.ui.component.AppAvatarAsyncImage
+import tmh.nhoctax.githubusers.core.ui.component.AppLoading
+import tmh.nhoctax.githubusers.core.ui.component.SpacerHor
+import tmh.nhoctax.githubusers.core.ui.component.SpacerVer
+import tmh.nhoctax.githubusers.feature.user.presentation.model.UserUIItem
 
 @Composable
 fun UserListScreen(vm: UserListViewModel = hiltViewModel<UserListViewModel>()) {
@@ -54,9 +58,7 @@ fun UserListScreen(
     onAction: (UserListUIAction) -> Unit
 ) {
     if (state.isLoading) {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator()
-        }
+        AppLoading()
     } else if (state.error != null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(text = state.error, color = MaterialTheme.colorScheme.error)
@@ -88,7 +90,7 @@ fun UserListScreen(
 
 @Composable
 fun UserItem(
-    user: User,
+    user: UserUIItem,
     onClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -99,16 +101,12 @@ fun UserItem(
             .clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        AsyncImage(
-            model = user.avatarUrl,
-            contentDescription = "User Avatar",
-            modifier = Modifier
-                .size(60.dp)
-                .clip(CircleShape),
-            contentScale = ContentScale.Crop
+        AppAvatarAsyncImage(
+            imageSize = 60.dp,
+            imageUrl = user.avatarUrl
         )
 
-        Spacer(modifier = Modifier.width(16.dp))
+        SpacerHor(16.dp)
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -121,10 +119,10 @@ fun UserItem(
                 color = Color.Gray,
                 fontSize = 14.sp
             )
-            Spacer(modifier = Modifier.height(4.dp))
+            SpacerVer(4.dp)
         }
 
-        Spacer(modifier = Modifier.width(8.dp))
+        SpacerHor(8.dp)
 
         Icon(
             imageVector = Icons.Outlined.Star,
@@ -134,7 +132,7 @@ fun UserItem(
                 .clickable(
                     onClick = onFavoriteClick
                 ),
-            tint = Color.Gray
+            tint = if (user.isFavorite) Color.Yellow else Color.Gray
         )
     }
 }
@@ -147,17 +145,18 @@ fun UserListScreenPreview() {
             state = UserListUIState(
                 isLoading = false,
                 users = listOf(
-                    User(
+                    UserUIItem(
                         id = 1,
                         username = "mojombo",
-                        avatarUrl = "https://avatars.githubusercontent.com/u/1?v=4"
+                        avatarUrl = "https://avatars.githubusercontent.com/u/1?v=4",
+                        isFavorite = true
                     ),
-                    User(
+                    UserUIItem(
                         id = 2,
                         username = "defunkt",
                         avatarUrl = "https://avatars.githubusercontent.com/u/2?v=4"
                     ),
-                    User(
+                    UserUIItem(
                         id = 3,
                         username = "pjhyett",
                         avatarUrl = "https://avatars.githubusercontent.com/u/3?v=4"

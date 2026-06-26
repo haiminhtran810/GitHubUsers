@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import tmh.nhoctax.githubusers.core.common.dispatcher.AppCoroutineDispatchers
 import tmh.nhoctax.githubusers.core.common.model.ResultWrapper
+import tmh.nhoctax.githubusers.feature.user.presentation.mapper.toUIItem
 import tmh.nhoctax.githubusers.feature.user.domain.usecase.GetUsersUseCase
 import javax.inject.Inject
 
@@ -42,6 +43,7 @@ class UserListViewModel @Inject constructor(
     }
 
     private fun loadUsers() {
+        Timber.d("loadUsers")
         viewModelScope.launch {
             getUsersUseCase().collect { result ->
                 when (result) {
@@ -51,7 +53,7 @@ class UserListViewModel @Inject constructor(
 
                     is ResultWrapper.Success -> {
                         Timber.d("UserList: ${result.data}")
-                        _state.update { it.copy(isLoading = false, users = result.data) }
+                        _state.update { it.copy(isLoading = false, users = result.data.map { user -> user.toUIItem() }) }
                     }
 
                     is ResultWrapper.GenericError -> {
