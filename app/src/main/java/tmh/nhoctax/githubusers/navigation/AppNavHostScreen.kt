@@ -24,18 +24,26 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import tmh.nhoctax.githubusers.feature.favorites.navigation.FavoriteDestination
 import tmh.nhoctax.githubusers.feature.favorites.navigation.favoriteNavGraph
-import tmh.nhoctax.githubusers.feature.user.R
 import tmh.nhoctax.githubusers.feature.user.navigation.UserListDestination
 import tmh.nhoctax.githubusers.feature.user.navigation.usersNavGraph
+import tmh.nhoctax.githubusers.core.navigation.AppNavigator
+
 
 @Composable
-fun AppNavHostScreen() {
+fun AppNavHostScreen(
+    appNavigator: AppNavigator
+) {
     // Create and remember a NavController to manage app navigation
     val navController = rememberNavController()
     // Observe the navigation state to determine the current destination.
     // This triggers recomposition whenever the user navigates to a new screen.
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    AppNavigationHandler(
+        appNavigator = appNavigator,
+        navController = navController
+    )
 
     // Determine if the bottom navigation bar should be visible.
     // We only show it on the top-level destinations (User List and Favorites).

@@ -75,7 +75,14 @@ fun UserListScreen(
                 }) { user ->
                 UserItem(
                     user = user,
-                    onClick = { onAction(UserListUIAction.UserClick(user.id.toString())) },
+                    onUserClick = {
+                        onAction(
+                            UserListUIAction.UserClick(
+                                username = user.username,
+                                avatarUrl = user.avatarUrl
+                            )
+                        )
+                    },
                     onFavoriteClick = { onAction(UserListUIAction.AddUserFavorite(user.id.toString())) },
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
@@ -91,14 +98,14 @@ fun UserListScreen(
 @Composable
 fun UserItem(
     user: UserUIItem,
-    onClick: () -> Unit,
+    onUserClick: () -> Unit,
     onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onClick() },
+            .clickable { onUserClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
         AppAvatarAsyncImage(
