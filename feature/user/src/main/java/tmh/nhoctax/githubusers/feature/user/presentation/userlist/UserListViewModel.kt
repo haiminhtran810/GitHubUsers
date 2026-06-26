@@ -17,10 +17,13 @@ import tmh.nhoctax.githubusers.feature.user.presentation.mapper.toUIItem
 import tmh.nhoctax.githubusers.feature.user.domain.usecase.GetUsersUseCase
 import javax.inject.Inject
 
+import tmh.nhoctax.githubusers.core.navigation.AppNavigator
+import tmh.nhoctax.githubusers.feature.user.navigation.UserDetailDestination
+
 @HiltViewModel
 class UserListViewModel @Inject constructor(
     private val getUsersUseCase: GetUsersUseCase,
-    private val appCoroutineDispatchers: AppCoroutineDispatchers
+    private val appNavigator: AppNavigator
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UserListUIState())
@@ -33,7 +36,12 @@ class UserListViewModel @Inject constructor(
     fun onActive(action: UserListUIAction) {
         when (action) {
             is UserListUIAction.UserClick -> {
-                // Navigation to UserDetail
+                appNavigator.tryNavigateTo(
+                    route = UserDetailDestination(
+                        username = action.username,
+                        avatarUrl = action.avatarUrl
+                    )
+                )
             }
 
             is UserListUIAction.AddUserFavorite -> {
@@ -53,7 +61,11 @@ class UserListViewModel @Inject constructor(
 
                     is ResultWrapper.Success -> {
                         Timber.d("UserList: ${result.data}")
-                        _state.update { it.copy(isLoading = false, users = result.data.map { user -> user.toUIItem() }) }
+                        _state.update {
+                            it.copy(
+                                isLoading = false,
+                                users = result.data.map { user -> user.toUIItem() })
+                        }
                     }
 
                     is ResultWrapper.GenericError -> {
