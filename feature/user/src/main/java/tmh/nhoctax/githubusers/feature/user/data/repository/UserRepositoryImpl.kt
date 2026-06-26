@@ -3,9 +3,10 @@ package tmh.nhoctax.githubusers.feature.user.data.repository
 import kotlinx.coroutines.flow.Flow
 import tmh.nhoctax.githubusers.core.common.model.ResultWrapper
 import tmh.nhoctax.githubusers.core.network.base.BaseRepo
+import tmh.nhoctax.githubusers.feature.user.data.mapper.toDomain
 import tmh.nhoctax.githubusers.feature.user.data.remote.UserApi
-import tmh.nhoctax.githubusers.feature.user.data.remote.model.toDomain
 import tmh.nhoctax.githubusers.feature.user.domain.model.User
+import tmh.nhoctax.githubusers.feature.user.domain.model.UserDetail
 import tmh.nhoctax.githubusers.feature.user.domain.repository.UserRepository
 import javax.inject.Inject
 
@@ -18,7 +19,7 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getUserDetail(username: String): Flow<ResultWrapper<User>> {
+    override suspend fun getUserDetail(username: String): Flow<ResultWrapper<UserDetail>> {
         return safeApiCall {
             api.getUserDetail(username).toDomain()
         }
