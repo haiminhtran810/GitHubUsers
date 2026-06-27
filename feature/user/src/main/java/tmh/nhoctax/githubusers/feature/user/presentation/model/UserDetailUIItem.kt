@@ -1,6 +1,7 @@
 package tmh.nhoctax.githubusers.feature.user.presentation.model
 
 data class UserDetailUIItem(
+    val id: Int,
     val username: String,
     val avatarUrl: String,
     val country: String,

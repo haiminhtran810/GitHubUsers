@@ -8,7 +8,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import tmh.nhoctax.githubusers.core.navigation.AppNavigator
+import tmh.nhoctax.githubusers.core.ui.model.UserListItem
+import tmh.nhoctax.githubusers.feature.favorites.domain.usecase.ToggleFavoriteUserUseCase
+import tmh.nhoctax.githubusers.feature.favorites.presentation.mapper.toUserEntity
 import tmh.nhoctax.githubusers.feature.user.domain.usecase.GetUsersUseCase
 import tmh.nhoctax.githubusers.feature.user.navigation.UserDetailDestination
 import tmh.nhoctax.githubusers.feature.user.presentation.mapper.toUserListUI
@@ -17,13 +21,14 @@ import javax.inject.Inject
 @HiltViewModel
 class UserListViewModel @Inject constructor(
     getUsersUseCase: GetUsersUseCase,
-    private val appNavigator: AppNavigator
+    private val appNavigator: AppNavigator,
+    private val toggleFavoriteUserUseCase: ToggleFavoriteUserUseCase
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(UserListUIState())
     val state = _state.asStateFlow()
 
-    fun onActive(action: UserListUIAction) {
+    fun onAction(action: UserListUIAction) {
         when (action) {
             is UserListUIAction.UserClick -> {
                 appNavigator.tryNavigateTo(
@@ -33,8 +38,19 @@ class UserListViewModel @Inject constructor(
                     )
                 )
             }
+
             is UserListUIAction.AddUserFavorite -> {
                 // Add User to Room DB
+                addFavorite(action.item)
+            }
+        }
+    }
+
+    private fun addFavorite(item: UserListItem) {
+        viewModelScope.launch {
+            viewModelScope.launch {
+                val userEntity = item.toUserEntity()
+                toggleFavoriteUserUseCase(userEntity)
             }
         }
     }

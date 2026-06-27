@@ -30,7 +30,7 @@ fun UserListScreen(vm: UserListViewModel = hiltViewModel<UserListViewModel>()) {
     UserListContentScreen(
         state = state,
         pagingItems = pagingItems,
-        onAction = vm::onActive
+        onAction = vm::onAction
     )
 }
 
@@ -56,7 +56,7 @@ fun UserListContentScreen(
                 onAction.invoke(UserListUIAction.UserClick(username = username, avatarUrl = url))
             },
             onFavoriteClick = {
-                onAction.invoke(UserListUIAction.AddUserFavorite("0"))
+                onAction.invoke(UserListUIAction.AddUserFavorite(it))
             }
         )
     }

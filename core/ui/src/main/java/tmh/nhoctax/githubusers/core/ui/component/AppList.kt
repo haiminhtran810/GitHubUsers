@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Icon
@@ -31,11 +32,45 @@ import tmh.nhoctax.githubusers.core.ui.model.UserListItem
 import tmh.nhoctax.githubusers.core.ui.theme.GithubUsersTheme
 
 @Composable
+fun AppUserListStandard(
+    modifier: Modifier = Modifier,
+    users: List<UserListItem>,
+    onUserClick: (String, String) -> Unit,
+    onFavoriteClick: (UserListItem) -> Unit
+) {
+    Box(modifier = modifier) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(items = users, key = { it.id }) { item ->
+                UserItem(
+                    user = item,
+                    onUserClick = {
+                        onUserClick.invoke(
+                            item.username,
+                            item.avatarUrl
+                        )
+                    },
+                    onFavoriteClick = {
+                        onFavoriteClick.invoke(item)
+                    }
+                )
+            }
+        }
+
+        if (users.isEmpty()) {
+            Text(
+                text = "No favorite users found",
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+    }
+}
+
+@Composable
 fun AppUserList(
     modifier: Modifier = Modifier,
     lazyPagingItems: LazyPagingItems<UserListItem>,
     onUserClick: (String, String) -> Unit,
-    onFavoriteClick: () -> Unit
+    onFavoriteClick: (UserListItem) -> Unit
 ) {
     Box(modifier = modifier) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -54,7 +89,9 @@ fun AppUserList(
                                 item.avatarUrl
                             )
                         },
-                        onFavoriteClick = onFavoriteClick
+                        onFavoriteClick = {
+                            onFavoriteClick.invoke(item)
+                        }
                     )
                 }
             }
