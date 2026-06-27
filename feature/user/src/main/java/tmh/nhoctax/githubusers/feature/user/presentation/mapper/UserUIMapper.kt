@@ -1,5 +1,6 @@
 package tmh.nhoctax.githubusers.feature.user.presentation.mapper
 
+import tmh.nhoctax.githubusers.core.database.model.UserEntity
 import tmh.nhoctax.githubusers.core.ui.model.UserListItem
 import tmh.nhoctax.githubusers.feature.user.domain.model.User
 import tmh.nhoctax.githubusers.feature.user.domain.model.UserDetail
@@ -15,8 +16,15 @@ fun User.toUIItem(isFavorite: Boolean = false): UserUIItem {
     )
 }
 
+fun UserDetailUIItem.toUserEntity() = UserEntity(
+    id = id,
+    username = username,
+    url = avatarUrl
+)
+
 fun UserDetail.toUIItem(isFavorite: Boolean = false): UserDetailUIItem {
     return UserDetailUIItem(
+        id = id,
         username = username,
         avatarUrl = avatarUrl,
         country = country,

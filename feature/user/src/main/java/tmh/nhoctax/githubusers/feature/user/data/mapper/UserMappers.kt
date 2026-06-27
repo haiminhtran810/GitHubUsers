@@ -15,6 +15,7 @@ fun UserResponse.toDomain(): User {
 
 fun UserDetailResponse.toDomain(): UserDetail {
     return UserDetail(
+        id = id,
         username = login.orEmpty(),
         avatarUrl = avatarUrl.orEmpty(),
         country = location.orEmpty(),

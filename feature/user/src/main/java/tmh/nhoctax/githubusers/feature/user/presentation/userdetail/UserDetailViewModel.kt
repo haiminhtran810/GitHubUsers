@@ -7,21 +7,28 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import tmh.nhoctax.githubusers.core.common.model.ResultWrapper
 import tmh.nhoctax.githubusers.core.navigation.AppNavigator
+import tmh.nhoctax.githubusers.feature.favorites.domain.usecase.IsFavoriteUserUseCase
+import tmh.nhoctax.githubusers.feature.favorites.domain.usecase.ToggleFavoriteUserUseCase
 import tmh.nhoctax.githubusers.feature.user.domain.usecase.GetUserDetailUseCase
 import javax.inject.Inject
 
 import tmh.nhoctax.githubusers.feature.user.presentation.mapper.toUIItem
+import tmh.nhoctax.githubusers.feature.user.presentation.mapper.toUserEntity
 
 @HiltViewModel
 class UserDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val appNavigator: AppNavigator,
-    private val getUserDetailUseCase: GetUserDetailUseCase
+    private val getUserDetailUseCase: GetUserDetailUseCase,
+    private val toggleFavoriteUserUseCase: ToggleFavoriteUserUseCase,
+    private val isFavoriteUserUseCase: IsFavoriteUserUseCase
+
 ) : ViewModel() {
 
     private val username: String = checkNotNull(savedStateHandle.get<String>("username"))
@@ -40,7 +47,37 @@ class UserDetailViewModel @Inject constructor(
             }
 
             is UserDetailUIAction.AddUserFavorite -> {
+                addFavoriteUser()
+            }
+        }
+    }
 
+    private fun checkUserFavorite(id: Int) {
+        viewModelScope.launch {
+            val isFavorite = isFavoriteUserUseCase.invoke(id).first()
+            _state.update { currentState ->
+                currentState.copy(
+                    user = currentState.user?.copy(isFavorite = isFavorite)
+                )
+            }
+        }
+    }
+
+    private fun updateFavoriteUser(isFavorite: Boolean) {
+        _state.update { currentState ->
+            currentState.copy(
+                user = currentState.user?.copy(isFavorite = isFavorite)
+            )
+        }
+    }
+
+    private fun addFavoriteUser() {
+        viewModelScope.launch {
+            state.value.user?.let {
+                val userEntity = it.toUserEntity()
+                val isFavorite = it.isFavorite
+                toggleFavoriteUserUseCase.invoke(userEntity)
+                updateFavoriteUser(!isFavorite)
             }
         }
     }
@@ -61,6 +98,8 @@ class UserDetailViewModel @Inject constructor(
 
                     is ResultWrapper.Success -> {
                         Timber.d("getUserDetail: ${result.data}")
+                        val userId = result.data.id
+                        checkUserFavorite(userId)
                         _state.update { it.copy(isLoading = false, user = result.data.toUIItem()) }
                     }
 

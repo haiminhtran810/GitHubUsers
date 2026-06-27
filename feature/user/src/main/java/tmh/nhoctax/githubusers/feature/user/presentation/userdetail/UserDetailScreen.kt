@@ -105,7 +105,7 @@ fun UserDetailContent(
                 UserDetailInfo(
                     user = state.user,
                     onFavoriteClick = {
-                        onAction(UserDetailUIAction.AddUserFavorite(state.user.username))
+                        onAction(UserDetailUIAction.AddUserFavorite)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -137,18 +137,18 @@ fun UserDetailInfo(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             AppAvatarAsyncImage(imageSize = 120.dp, imageUrl = user.avatarUrl)
-            
+
             SpacerVer(24.dp)
-            
+
             Text(
                 text = user.username,
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.Black
             )
-            
+
             SpacerVer(8.dp)
-            
+
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     imageVector = Icons.Outlined.LocationOn,
@@ -163,9 +163,9 @@ fun UserDetailInfo(
                     color = Color.Gray
                 )
             }
-            
+
             SpacerVer(32.dp)
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -176,14 +176,14 @@ fun UserDetailInfo(
                     iconTint = Color(0xFFFFB300),
                     value = user.followers.toString()
                 )
-                
+
                 UserStatItem(
                     label = "Following",
                     icon = Icons.Filled.Star,
                     iconTint = Color(0xFFFF7043),
                     value = user.following.toString()
                 )
-                
+
                 UserStatItem(
                     label = "Favorite",
                     icon = if (user.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -262,6 +262,7 @@ private fun UserDetailContentSuccessPreview() {
         UserDetailContent(
             state = UserDetailUIState(
                 user = UserDetailUIItem(
+                    id = 0,
                     username = "johndoe",
                     avatarUrl = "https://avatars.githubusercontent.com/u/1?v=4",
                     country = "United States",
