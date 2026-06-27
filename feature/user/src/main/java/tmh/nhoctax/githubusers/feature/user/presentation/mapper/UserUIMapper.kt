@@ -1,5 +1,6 @@
 package tmh.nhoctax.githubusers.feature.user.presentation.mapper
 
+import tmh.nhoctax.githubusers.core.ui.model.UserListItem
 import tmh.nhoctax.githubusers.feature.user.domain.model.User
 import tmh.nhoctax.githubusers.feature.user.domain.model.UserDetail
 import tmh.nhoctax.githubusers.feature.user.presentation.model.UserDetailUIItem
@@ -25,3 +26,10 @@ fun UserDetail.toUIItem(isFavorite: Boolean = false): UserDetailUIItem {
         isFavorite = isFavorite
     )
 }
+
+internal fun User.toUserListUI() = UserListItem(
+    id = id,
+    username = username,
+    avatarUrl = avatarUrl,
+    isFavorite = false,
+)

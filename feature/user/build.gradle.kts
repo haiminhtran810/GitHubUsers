@@ -48,7 +48,6 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -73,4 +72,9 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // Creates and manages paginated data, including loading pages, caching, and handling pagination state.
+    implementation(libs.androidx.paging.runtime)
+    // Provides Compose integrations to display paginated data using LazyColumn or LazyGrid.
+    implementation(libs.androidx.paging.compose)
 }

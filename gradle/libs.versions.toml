@@ -46,6 +46,7 @@ moshiKotlinCodegen = "1.15.2"
 datastorePreferences = "1.2.1"
 material = "1.14.0"
 timber = "5.0.1"
+paging = "3.3.5"
 
 navigationCompose = "2.8.5"
 hilt = "2.59.2"
@@ -104,6 +105,8 @@ moshi-kotlin-codegen = { group = "com.squareup.moshi", name = "moshi-kotlin-code
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
+androidx-paging-runtime = { group = "androidx.paging", name = "paging-runtime", version.ref = "paging" }
+androidx-paging-compose = { group = "androidx.paging", name = "paging-compose", version.ref = "paging" }
 
 agp-gradle-plugin = { group = "com.android.tools.build", name = "gradle", version.ref = "agp" }
 kotlin-gradle-plugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-plugin", version.ref = "kotlin" }
