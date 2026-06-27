@@ -37,6 +37,11 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
+    debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.core.ktx)
     implementation(libs.coil.compose)
+    // Creates and manages paginated data, including loading pages, caching, and handling pagination state.
+    implementation(libs.androidx.paging.runtime)
+    // Provides Compose integrations to display paginated data using LazyColumn or LazyGrid.
+    implementation(libs.androidx.paging.compose)
 }
