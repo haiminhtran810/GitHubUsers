@@ -56,6 +56,30 @@ android {
 
 dependencies {
 
+    // 1. implementation: Used only within the current module. not exposed to dependent modules.
+    // Included in release APK: Yes
+    // Use cases: Retrofit, Coroutines, Room Runtime, Compose, etc.
+
+    // 2. api: Expose the dependency to modules that depend on this module
+    // Included in release APK: Yes
+    // Use cases: Shared libraries such as core-ui or core-network.
+
+    // 3. debugImplementation: Included only in Debug builds
+    // Included in release APK: No
+    // Use cases: LeakCanary, Chucker, Flipper, debug tools.
+
+    // 4. testImplementation: Dependencies for local unit tests (src/androidTest)
+    // Included in release APK: No
+    // Use cases: JUnit, Mockito, MockK, Truth.
+
+    // 5. androidTestImplementation: Dependencies for instrumentation/UI tests (src/androidTest).
+    // Included in release APK: No
+    // Use cases: Espresso, Compose UI Test, AndroidX Test.
+
+    // 6. ksp: Runs annotation processors to generate code during build time.
+    // Included in release APK: No
+    // Use cases: Room Compiler, Hilt Compiler, Moshi CodeGen, Glide Compiler.
+
     implementation(project(":core"))
     implementation(project(":core:common"))
     implementation(project(":core:network"))
