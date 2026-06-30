@@ -11,8 +11,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -177,16 +180,14 @@ private fun UserItem(
             SpacerHor(8.dp)
 
             Icon(
-                imageVector = Icons.Outlined.Star,
-                contentDescription = "Favorite",
-                modifier = Modifier
-                    .size(16.dp)
-                    .clickable(
-                        onClick = {
-                            onFavoriteClick.invoke()
-                        }
-                    ),
-                tint = if (user.isFavorite) Color.Yellow else Color.Gray
+                modifier = Modifier.clickable(
+                    onClick = {
+                        onFavoriteClick.invoke()
+                    }
+                ),
+                imageVector = if (user.isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                contentDescription = null,
+                tint = if (user.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         SpacerVer(16.dp)

@@ -14,6 +14,9 @@ interface FavoriteDAO {
     @Query("SELECT * FROM users")
     fun getUsers(): Flow<List<UserEntity>>
 
+    @Query("SELECT id FROM users")
+    fun getFavoriteIds(): Flow<List<Int>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
 
