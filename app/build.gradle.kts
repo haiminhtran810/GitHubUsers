@@ -60,8 +60,10 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:network"))
     implementation(project(":core:ui"))
-    implementation(project(":feature:user"))
-    implementation(project(":feature:favorites"))
+    implementation(project(":feature:user:api"))
+    implementation(project(":feature:user:impl"))
+    implementation(project(":feature:favorites:api"))
+    implementation(project(":feature:favorites:impl"))
 
     implementation(libs.timber)
     implementation(libs.androidx.hilt.navigation.compose)
