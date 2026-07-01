@@ -18,3 +18,4 @@ import tmh.nhoctax.githubusers.core.database.model.UserEntity
 abstract class AppDatabase : RoomDatabase() {
     abstract fun favoriteDAO(): FavoriteDAO
 }
+
