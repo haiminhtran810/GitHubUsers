@@ -10,6 +10,8 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import timber.log.Timber
+import tmh.nhoctax.githubusers.core.network.BuildConfig
+import tmh.nhoctax.githubusers.core.network.interceptor.authen.AuthenticatorInterceptor
 import tmh.nhoctax.githubusers.core.network.interceptor.header.HeadInterceptor
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -34,6 +36,7 @@ object NetworkModule {
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(HeadInterceptor())
+            .authenticator(AuthenticatorInterceptor())
             .addInterceptor(loggingInterceptor)
             .build()
     }
@@ -42,7 +45,7 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(tmh.nhoctax.githubusers.core.network.BuildConfig.BASE_URL)
+            .baseUrl(BuildConfig.BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
