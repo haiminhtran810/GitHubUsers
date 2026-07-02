@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import org.json.JSONObject
 import retrofit2.HttpException
 import timber.log.Timber
 import tmh.nhoctax.githubusers.core.common.model.ResultWrapper
@@ -30,8 +31,10 @@ abstract class BaseRepo {
 
                 is HttpException -> {
                     Timber.e("Exception: HttpException $ex")
+                    val errorBody = ex.response()?.errorBody()?.string()
+                    val apiErrorMessage = parseErrorMessage(errorBody) ?: ex.message()
                     ResultWrapper.GenericError(
-                        ex.code(), ex.message()
+                        ex.code(), apiErrorMessage
                     )
                 }
 
@@ -44,5 +47,16 @@ abstract class BaseRepo {
             }
             emit(resultError)
         }.flowOn(dispatcher)
+    }
+}
+
+private fun parseErrorMessage(errorBody: String?): String? {
+    if (errorBody.isNullOrEmpty()) return null
+    return try {
+        val jsonObject = JSONObject(errorBody)
+        jsonObject.optString("message", null)
+    } catch (e: Exception) {
+        Timber.e("parseErrorMessage Exception: $e")
+        null
     }
 }
