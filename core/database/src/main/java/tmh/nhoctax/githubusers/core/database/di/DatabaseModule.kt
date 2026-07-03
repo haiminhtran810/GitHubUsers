@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import tmh.nhoctax.githubusers.core.database.AppDatabase
 import tmh.nhoctax.githubusers.core.database.dao.FavoriteDAO
+import tmh.nhoctax.githubusers.core.database.dao.UserDAO
 import javax.inject.Singleton
 
 @Module
@@ -23,12 +24,20 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             DATABASE_NAME
-        ).build()
+        )
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
     }
 
     @Provides
     @Singleton
     fun provideFavoriteDAO(database: AppDatabase): FavoriteDAO {
         return database.favoriteDAO()
+    }
+
+    @Provides
+    @Singleton
+    fun provideUserDAO(database: AppDatabase): UserDAO {
+        return database.userDAO()
     }
 }
