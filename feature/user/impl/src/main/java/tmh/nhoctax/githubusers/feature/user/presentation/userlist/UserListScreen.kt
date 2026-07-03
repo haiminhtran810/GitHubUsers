@@ -25,6 +25,8 @@ import tmh.nhoctax.githubusers.core.ui.theme.GithubUsersTheme
 @Composable
 fun UserListScreen(vm: UserListViewModel = hiltViewModel<UserListViewModel>()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    // collectAsLazyPagingItems: converts you reactive Flow<PagingData<T>> into a compose-ready LazyPagingItems<T> state wrapper
+    // lazyPagingItems.loadState: Gives you real-time access to the stream states (refresh, append, or prepend), allowing you to cleanly render custom loading spinners or retry buttons on failure.
     val pagingItems = vm.userPaging.collectAsLazyPagingItems()
 
     UserListContentScreen(

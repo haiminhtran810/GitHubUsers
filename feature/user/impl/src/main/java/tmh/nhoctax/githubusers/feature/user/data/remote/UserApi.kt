@@ -9,7 +9,7 @@ import tmh.nhoctax.githubusers.feature.user.data.remote.model.UserResponse
 interface UserApi {
     @GET("users")
     suspend fun getUsers(
-        @Query("since") since: Int? = null,
+        @Query("since") since: Int? = null, // GitHub uses the last user ID for pagination
         @Query("per_page") perPage: Int? = null
     ): List<UserResponse>
 

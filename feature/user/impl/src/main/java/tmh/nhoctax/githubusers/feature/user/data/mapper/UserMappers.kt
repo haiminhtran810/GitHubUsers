@@ -1,5 +1,6 @@
 package tmh.nhoctax.githubusers.feature.user.data.mapper
 
+import tmh.nhoctax.githubusers.core.database.model.UserEntity
 import tmh.nhoctax.githubusers.feature.user.data.remote.model.UserDetailResponse
 import tmh.nhoctax.githubusers.feature.user.data.remote.model.UserResponse
 import tmh.nhoctax.githubusers.feature.user.domain.model.User
@@ -10,6 +11,14 @@ fun UserResponse.toDomain(): User {
         id = id,
         username = login,
         avatarUrl = avatarUrl
+    )
+}
+
+fun UserEntity.toDomain(): User {
+    return User(
+        id = id,
+        username = username,
+        avatarUrl = url
     )
 }
 
@@ -24,3 +33,9 @@ fun UserDetailResponse.toDomain(): UserDetail {
         url = url.orEmpty()
     )
 }
+
+internal fun UserResponse.toUserEntity(): UserEntity = UserEntity(
+    id = id,
+    username = login,
+    url = avatarUrl
+)
