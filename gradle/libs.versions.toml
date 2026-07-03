@@ -1,5 +1,9 @@
 [versions]
 
+compileSdk = "36"
+minSdk = "26"
+targetSdk = "36"
+
 gson = "2.14.0"
 converterGson = "3.0.0"
 agp = "9.2.1"

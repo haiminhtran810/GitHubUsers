@@ -8,12 +8,12 @@ plugins {
 
 android {
     namespace = "tmh.nhoctax.githubusers"
-    compileSdk = 36
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "tmh.nhoctax.githubusers"
-        minSdk = 26
-        targetSdk = 36
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
 
