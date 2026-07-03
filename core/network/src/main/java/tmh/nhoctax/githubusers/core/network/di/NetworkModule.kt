@@ -14,6 +14,7 @@ import timber.log.Timber
 import tmh.nhoctax.githubusers.core.network.BuildConfig
 import tmh.nhoctax.githubusers.core.network.interceptor.authen.AuthenticatorInterceptor
 import tmh.nhoctax.githubusers.core.network.interceptor.header.HeadInterceptor
+import tmh.nhoctax.githubusers.core.security.AppSecrets
 import java.net.URL
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -29,14 +30,14 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideCertificatePinner(): CertificatePinner {
+    fun provideCertificatePinner(appSecrets: AppSecrets): CertificatePinner {
         // CertificatePinner expects a hostname or wildcard (e.g.,api.github.com or *.github.com).
         // Do not pass the full URL https://api.github.com/ from BuildConfig.BASE_URL.
         // Passing a full URL with the protocol (https://) and path causes java.lang.IllegalArgumentException: Invalid pattern: ... to be thrown.
         val host = URL(BuildConfig.BASE_URL).host
         return CertificatePinner.Builder().add(
             pattern = host,
-            "sha256/xxxx"
+            "sha256/" + appSecrets.certificatePinnerKey
         ).build()
     }
 
