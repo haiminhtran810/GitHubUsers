@@ -53,6 +53,7 @@ navigationCompose = "2.8.5"
 hilt = "2.59.2"
 hiltNavigationCompose = "1.2.0"
 navigationCommonKtx = "2.9.8"
+leakcanaryVersion = "1.0.0"
 [libraries]
 
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
@@ -119,6 +120,7 @@ hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", v
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 androidx-navigation-common-ktx = { group = "androidx.navigation", name = "navigation-common-ktx", version.ref = "navigationCommonKtx" }
 leakcanary-android = { group = "com.squareup.leakcanary", name = "leakcanary-android", version.ref = "leakcanary" }
+leakcanary = { group = "com.android.tools.studio.leakcanary", name = "leakcanary", version.ref = "leakcanaryVersion" }
 [plugins]
 
 android-library = { id = "com.android.library", version.ref = "agp" }
