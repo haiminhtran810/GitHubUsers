@@ -5,6 +5,7 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import okhttp3.CertificatePinner
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -13,6 +14,7 @@ import timber.log.Timber
 import tmh.nhoctax.githubusers.core.network.BuildConfig
 import tmh.nhoctax.githubusers.core.network.interceptor.authen.AuthenticatorInterceptor
 import tmh.nhoctax.githubusers.core.network.interceptor.header.HeadInterceptor
+import java.net.URL
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
@@ -24,9 +26,23 @@ object NetworkModule {
     @Singleton
     fun provideGson() = GsonBuilder().create()
 
+
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideCertificatePinner(): CertificatePinner {
+        // CertificatePinner expects a hostname or wildcard (e.g.,api.github.com or *.github.com).
+        // Do not pass the full URL https://api.github.com/ from BuildConfig.BASE_URL.
+        // Passing a full URL with the protocol (https://) and path causes java.lang.IllegalArgumentException: Invalid pattern: ... to be thrown.
+        val host = URL(BuildConfig.BASE_URL).host
+        return CertificatePinner.Builder().add(
+            pattern = host,
+            "sha256/xxxx"
+        ).build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideOkHttpClient(certificatePinner: CertificatePinner): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor { message ->
             Timber.tag("OkHttp").d(message)
         }.apply {
@@ -35,6 +51,7 @@ object NetworkModule {
         return OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            .certificatePinner(certificatePinner)
             .addInterceptor(HeadInterceptor())
             .authenticator(AuthenticatorInterceptor())
             .addInterceptor(loggingInterceptor)
