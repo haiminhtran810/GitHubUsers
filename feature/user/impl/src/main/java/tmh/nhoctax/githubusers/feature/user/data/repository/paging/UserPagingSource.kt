@@ -2,13 +2,15 @@ package tmh.nhoctax.githubusers.feature.user.data.repository.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
+import tmh.nhoctax.githubusers.core.database.dao.UserDAO
 import tmh.nhoctax.githubusers.feature.user.data.mapper.toDomain
 import tmh.nhoctax.githubusers.feature.user.data.remote.UserApi
 import tmh.nhoctax.githubusers.feature.user.domain.model.User
 import java.io.IOException
 
 class UserPagingSource(
-    private val api: UserApi
+    private val api: UserApi,
+    private val userDAO: UserDAO
 ) : PagingSource<Int, User>() {
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, User> {
@@ -29,6 +31,7 @@ class UserPagingSource(
             } else {
                 users.last().id
             }
+
             LoadResult.Page(
                 data = users,
                 prevKey = if (since == 0) null else since,

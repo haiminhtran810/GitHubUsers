@@ -27,6 +27,16 @@ object NetworkModule {
     @Singleton
     fun provideGson() = GsonBuilder().create()
 
+    @Provides
+    @Singleton
+    fun provideLoggingInterceptor(): HttpLoggingInterceptor {
+        return HttpLoggingInterceptor { message ->
+            Timber.tag("OkHttp").d(message)
+        }.apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+    }
+
 
     @Provides
     @Singleton
@@ -43,12 +53,10 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(certificatePinner: CertificatePinner): OkHttpClient {
-        val loggingInterceptor = HttpLoggingInterceptor { message ->
-            Timber.tag("OkHttp").d(message)
-        }.apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        }
+    fun provideOkHttpClient(
+        certificatePinner: CertificatePinner,
+        loggingInterceptor: HttpLoggingInterceptor
+    ): OkHttpClient {
         return OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)

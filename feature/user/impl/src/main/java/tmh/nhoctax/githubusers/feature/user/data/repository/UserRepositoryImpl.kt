@@ -6,6 +6,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import kotlinx.coroutines.flow.Flow
 import tmh.nhoctax.githubusers.core.common.model.ResultWrapper
+import tmh.nhoctax.githubusers.core.database.dao.UserDAO
 import tmh.nhoctax.githubusers.core.network.base.BaseRepo
 import tmh.nhoctax.githubusers.feature.user.data.mapper.toDomain
 import tmh.nhoctax.githubusers.feature.user.data.remote.UserApi
@@ -16,7 +17,8 @@ import tmh.nhoctax.githubusers.feature.user.domain.repository.UserRepository
 import javax.inject.Inject
 
 class UserRepositoryImpl @Inject constructor(
-    private val api: UserApi
+    private val api: UserApi,
+    private val userDAO: UserDAO
 ) : UserRepository, BaseRepo() {
     @OptIn(ExperimentalPagingApi::class)
     override fun getUsers(): Flow<PagingData<User>> {
@@ -29,7 +31,7 @@ class UserRepositoryImpl @Inject constructor(
             ),
             remoteMediator = null,
             pagingSourceFactory = {
-                UserPagingSource(api)
+                UserPagingSource(api, userDAO)
             }
         ).flow
     }
