@@ -27,6 +27,6 @@ class FavoriteRepositoryImpl @Inject constructor(private val favoriteDAO: Favori
     }
 
     override suspend fun remove(id: Int) {
-        return favoriteDAO.removeUser(id)
+        return favoriteDAO.removeFavoriteUser(id)
     }
 }

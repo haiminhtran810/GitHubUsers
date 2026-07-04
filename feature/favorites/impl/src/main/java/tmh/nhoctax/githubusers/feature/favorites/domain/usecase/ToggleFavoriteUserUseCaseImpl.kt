@@ -13,11 +13,20 @@ class ToggleFavoriteUserUseCaseImpl @Inject constructor(
     override suspend operator fun invoke(user: FavoriteUser) {
         val userId = user.id
         // check if user is already a favorite
-        val isFavorite = favoriteRepository.isFavorite(userId).first()
+        val isFavorite = favoriteRepository.isFavorite(id = userId).first()
         if (isFavorite) {
-            favoriteRepository.remove(userId)
+            favoriteRepository.remove(
+                id = userId
+            )
         } else {
-            favoriteRepository.addFavorite(UserEntity(user.id, user.username, user.url))
+            favoriteRepository.addFavorite(
+                UserEntity(
+                    id = user.id,
+                    username = user.username,
+                    url = user.url,
+                    isFavorite = true
+                )
+            )
         }
     }
 }

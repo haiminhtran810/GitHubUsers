@@ -15,6 +15,7 @@ internal class AppSecretsImpl @Inject constructor() : AppSecrets {
             tlsPublicKey
         } catch (e: UnsatisfiedLinkError) {
             // Safe fallback during JVM unit tests which don't load native libraries easily
+            Timber.e(e)
             ""
         }
 
@@ -26,6 +27,7 @@ internal class AppSecretsImpl @Inject constructor() : AppSecrets {
                 System.loadLibrary("security_secrets")
             } catch (e: UnsatisfiedLinkError) {
                 // Ignore during local JVM tests
+                Timber.e(e)
             }
         }
     }
