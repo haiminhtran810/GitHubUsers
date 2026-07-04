@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import tmh.nhoctax.githubusers.core.navigation.AppNavigator
 import tmh.nhoctax.githubusers.core.ui.model.UserListItem
 import tmh.nhoctax.githubusers.feature.favorites.domain.usecase.ToggleFavoriteUserUseCase
@@ -69,6 +70,7 @@ class UserListViewModel @Inject constructor(
         .combine(getFavoriteUserIdsUseCase()) { pagingData, ids ->
             pagingData.map { user ->
                 val uiItem = user.toUserListUI()
+                Timber.d("userPaging: $uiItem")
                 if (ids.contains(uiItem.id)) {
                     uiItem.copy(
                         isFavorite = !uiItem.isFavorite
