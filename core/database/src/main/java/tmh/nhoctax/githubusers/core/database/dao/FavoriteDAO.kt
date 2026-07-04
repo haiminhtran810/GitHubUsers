@@ -32,4 +32,7 @@ interface FavoriteDAO {
 
     @Query("SELECT EXISTS(SELECT 1 FROM users WHERE id = :id AND is_favorite = 1)")
     fun isFavorite(id: Int): Flow<Boolean>
+
+    @Query("UPDATE users SET is_favorite = :isFavorite WHERE id = :userId")
+    suspend fun updateFavoriteStatus(userId: Int, isFavorite: Boolean)
 }

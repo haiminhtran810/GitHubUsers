@@ -14,10 +14,8 @@ interface UserDAO {
     @Upsert
     suspend fun insertAll(data: List<UserEntity>)
 
-    // Order by id ASC to guarantee sequential ordering matching the API's pagination keys
     @Query("SELECT * FROM users ORDER BY id ASC")
     fun getPagingSource(): PagingSource<Int, UserEntity>
-
 
     @Query("DELETE FROM users WHERE is_favorite = 0")
     suspend fun deleteNonFavorites()

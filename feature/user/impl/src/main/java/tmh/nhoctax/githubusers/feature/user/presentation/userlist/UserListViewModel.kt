@@ -7,16 +7,13 @@ import androidx.paging.map
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import tmh.nhoctax.githubusers.core.navigation.AppNavigator
 import tmh.nhoctax.githubusers.core.ui.model.UserListItem
 import tmh.nhoctax.githubusers.feature.favorites.domain.usecase.ToggleFavoriteUserUseCase
 import tmh.nhoctax.githubusers.feature.favorites.domain.model.FavoriteUser
-import tmh.nhoctax.githubusers.feature.favorites.domain.usecase.GetFavoriteUserIdsUseCase
 import tmh.nhoctax.githubusers.feature.user.domain.usecase.GetUsersUseCase
 import tmh.nhoctax.githubusers.feature.user.navigation.UserDetailDestination
 import tmh.nhoctax.githubusers.feature.user.presentation.mapper.toUserListUI
@@ -25,7 +22,6 @@ import javax.inject.Inject
 @HiltViewModel
 class UserListViewModel @Inject constructor(
     getUsersUseCase: GetUsersUseCase,
-    getFavoriteUserIdsUseCase: GetFavoriteUserIdsUseCase,
     private val appNavigator: AppNavigator,
     private val toggleFavoriteUserUseCase: ToggleFavoriteUserUseCase,
 ) : ViewModel() {
@@ -65,19 +61,7 @@ class UserListViewModel @Inject constructor(
         }
     }
 
-    val userPaging = getUsersUseCase().cachedIn(viewModelScope)
-        //Combine with the Database Flow
-        .combine(getFavoriteUserIdsUseCase()) { pagingData, ids ->
-            pagingData.map { user ->
-                val uiItem = user.toUserListUI()
-                Timber.d("userPaging: $uiItem")
-                if (ids.contains(uiItem.id)) {
-                    uiItem.copy(
-                        isFavorite = !uiItem.isFavorite
-                    )
-                } else {
-                    uiItem
-                }
-            }
-        }
+    val userPaging = getUsersUseCase().map { pagingData ->
+        pagingData.map { user -> user.toUserListUI() }
+    }.cachedIn(viewModelScope)
 }

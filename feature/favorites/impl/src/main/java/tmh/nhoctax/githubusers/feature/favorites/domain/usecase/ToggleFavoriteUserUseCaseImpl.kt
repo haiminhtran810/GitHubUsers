@@ -15,9 +15,7 @@ class ToggleFavoriteUserUseCaseImpl @Inject constructor(
         // check if user is already a favorite
         val isFavorite = favoriteRepository.isFavorite(id = userId).first()
         if (isFavorite) {
-            favoriteRepository.remove(
-                id = userId
-            )
+            favoriteRepository.remove(id = userId)
         } else {
             favoriteRepository.addFavorite(
                 UserEntity(

@@ -23,7 +23,7 @@ class FavoriteRepositoryImpl @Inject constructor(private val favoriteDAO: Favori
     }
 
     override suspend fun addFavorite(userEntity: UserEntity) {
-        return favoriteDAO.insertUser(userEntity)
+        return favoriteDAO.updateFavoriteStatus(userEntity.id, userEntity.isFavorite)
     }
 
     override suspend fun remove(id: Int) {
