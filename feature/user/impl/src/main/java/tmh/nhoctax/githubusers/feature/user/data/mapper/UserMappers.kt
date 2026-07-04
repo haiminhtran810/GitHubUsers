@@ -10,7 +10,8 @@ fun UserResponse.toDomain(): User {
     return User(
         id = id,
         username = login,
-        avatarUrl = avatarUrl
+        avatarUrl = avatarUrl,
+        isFavorite = false
     )
 }
 
@@ -18,7 +19,8 @@ fun UserEntity.toDomain(): User {
     return User(
         id = id,
         username = username,
-        avatarUrl = url
+        avatarUrl = url,
+        isFavorite = isFavorite
     )
 }
 

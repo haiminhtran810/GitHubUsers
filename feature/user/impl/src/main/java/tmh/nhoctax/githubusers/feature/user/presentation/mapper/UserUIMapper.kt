@@ -39,5 +39,5 @@ internal fun User.toUserListUI() = UserListItem(
     id = id,
     username = username,
     avatarUrl = avatarUrl,
-    isFavorite = false,
+    isFavorite = isFavorite,
 )

@@ -6,14 +6,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -83,7 +82,8 @@ fun AppUserList(
                     keyValue.id
                 }
             ) { index ->
-                lazyPagingItems[index]?.let { item ->
+                val item = lazyPagingItems[index]
+                if (item != null) {
                     UserItem(
                         user = item,
                         onUserClick = {
@@ -96,6 +96,8 @@ fun AppUserList(
                             onFavoriteClick.invoke(item)
                         }
                     )
+                } else {
+                    androidx.compose.foundation.layout.Spacer(modifier = Modifier.fillMaxWidth().height(76.dp))
                 }
             }
         }
