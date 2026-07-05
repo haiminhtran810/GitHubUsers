@@ -31,7 +31,7 @@ class UserRepositoryImpl @Inject constructor(
                 pageSize = PAGE_SIZE,// Items per page
                 enablePlaceholders = true,
                 prefetchDistance = PAGE_SIZE / 2, // Load next page when PAGE_SIZE / 2 items from bottom
-                initialLoadSize = PAGE_SIZE * 3
+                initialLoadSize = PAGE_SIZE
             ),
             remoteMediator = remoteMediator,
             pagingSourceFactory = {

@@ -69,6 +69,8 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.converter.gson)
 
+    implementation(libs.androidx.datastore.preferences)
+
     // Timber
     implementation(libs.timber)
     
