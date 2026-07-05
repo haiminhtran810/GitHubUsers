@@ -1,4 +1,6 @@
 [versions]
+versionCode = "3"
+versionName = "1.0"
 
 compileSdk = "36"
 minSdk = "26"
