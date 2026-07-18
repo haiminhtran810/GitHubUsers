@@ -15,6 +15,6 @@ data class UserEntity(
     val username: String,
     @ColumnInfo("url")
     val url: String,
-    @ColumnInfo("is_favorite")
+    @ColumnInfo(name = "is_favorite", defaultValue = "0")
     val isFavorite: Boolean = false,
 )
