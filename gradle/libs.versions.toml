@@ -55,7 +55,7 @@ timber = "5.0.1"
 paging = "3.3.5"
 leakcanary = "2.14"
 
-navigationCompose = "2.8.5"
+navigationCompose = "2.9.8"
 hilt = "2.59.2"
 hiltNavigationCompose = "1.2.0"
 navigationCommonKtx = "2.9.8"

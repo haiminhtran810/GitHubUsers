@@ -5,5 +5,5 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UserDetailDestination(
     val username: String,
-    val avatarUrl: String
+    val avatarUrl: String? = null
 )

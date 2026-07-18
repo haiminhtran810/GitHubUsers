@@ -22,11 +22,11 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import tmh.nhoctax.githubusers.core.navigation.AppNavigator
 import tmh.nhoctax.githubusers.feature.favorites.navigation.FavoriteDestination
 import tmh.nhoctax.githubusers.feature.favorites.navigation.favoriteNavGraph
 import tmh.nhoctax.githubusers.feature.user.navigation.UserListDestination
 import tmh.nhoctax.githubusers.feature.user.navigation.usersNavGraph
-import tmh.nhoctax.githubusers.core.navigation.AppNavigator
 
 
 @Composable
