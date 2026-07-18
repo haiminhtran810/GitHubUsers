@@ -1,6 +1,11 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.google.devtools.ksp)
+    alias(libs.plugins.room)
+}
+
+room {
+    schemaDirectory("$projectDir/schemas")
 }
 
 android {
