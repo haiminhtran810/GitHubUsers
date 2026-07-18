@@ -13,6 +13,7 @@ android {
     defaultConfig {
         applicationId = "tmh.nhoctax.githubusers"
         minSdk = libs.versions.minSdk.get().toInt()
+        //noinspection OldTargetApi
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = libs.versions.versionCode.get().toInt()
         versionName = libs.versions.versionName.get()
@@ -40,7 +41,7 @@ android {
             applicationIdSuffix = ".stg"
             versionNameSuffix = "-stg"
         }
-        create("prod") {
+        create("prd") {
         }
     }
 
