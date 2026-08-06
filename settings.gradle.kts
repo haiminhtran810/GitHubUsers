@@ -22,7 +22,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GithubUsers"
+rootProject.name = "Nhoctax"
 include(":app")
 include(":core")
 include(":core:common")
