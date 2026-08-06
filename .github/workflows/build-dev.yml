@@ -1,162 +1,153 @@
-name: Make dev build
+# Build and upload the Android development flavor to Firebase App Distribution.
+name: Build dev
+
+# Run this workflow manually from the GitHub Actions page.
 on:
   workflow_dispatch:
     inputs:
       buildType:
-        description: 'Build Type'
+        # Select the Gradle build type: DevDebug or DevRelease.
+        description: Build type
         required: true
         type: choice
         options:
-          - release
           - debug
-        default: 'release'
+          - release
+        default: debug
       outputFormat:
-        description: 'Output format'
+        # APK is directly installable. AAB requires Firebase to be linked to Google Play.
+        description: Output format
         required: true
         type: choice
         options:
           - apk
           - aab
-        default: 'apk'
-      uploadToDrive:
-        description: 'Upload to Drive?'
-        required: true
-        type: boolean
-        default: true
-      uploadToFirebase:
-        description: 'Upload to Firebase? (If yes and aab, ensure linked to Google Play)'
-        required: true
-        type: boolean
-        default: true
+        default: apk
+
+# Prevent an older build on the same branch from finishing after a newer build.
+concurrency:
+  group: build-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+# The workflow only needs permission to clone the repository.
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build and upload dev to Firebase
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # Store the decoded release keystore only in the runner's temporary directory.
+    env:
+      KEYSTORE_PATH: ${{ runner.temp }}/keystore/ks.jks
+
     steps:
-      - name: Validating upload flags
-        if: inputs.uploadToDrive == false && inputs.uploadToFirebase == false
+      # Check Firebase credentials for every build and signing credentials for release builds.
+      - name: Validate required secrets
+        shell: bash
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_DEV }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACC_KEY_DEV }}
+          ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
         run: |
-          echo "uploadToDrive and uploadToFirebase can not both be false"
-          exit 1
-      - name: Checkout the code
+          set -euo pipefail
+
+          [[ -n "$FIREBASE_APP_ID" ]] || { echo "Missing secret: FIREBASE_APP_ID_DEV"; exit 1; }
+          [[ -n "$FIREBASE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: SERVICE_ACC_KEY_DEV"; exit 1; }
+
+          if [[ "${{ inputs.buildType }}" == "release" ]]; then
+            [[ -n "$ENCODED_KEYSTORE" ]] || { echo "Missing secret: ENCODED_KEYSTORE"; exit 1; }
+            [[ -n "$SIGNING_KEY_ALIAS" ]] || { echo "Missing secret: SIGNING_KEY_ALIAS"; exit 1; }
+            [[ -n "$SIGNING_KEY_PASSWORD" ]] || { echo "Missing secret: SIGNING_KEY_PASSWORD"; exit 1; }
+            [[ -n "$SIGNING_STORE_PASSWORD" ]] || { echo "Missing secret: SIGNING_STORE_PASSWORD"; exit 1; }
+          fi
+
+      # Download the exact commit that started this workflow.
+      - name: Check out source code
         uses: actions/checkout@v4
-      - name: Setup Java
+
+      # Install Java and restore cached Gradle dependencies.
+      - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '21'
-          cache: 'gradle'
-      - name: Setup python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-      - name: Grant gradlew permissions
+          distribution: zulu
+          java-version: "21"
+          cache: gradle
+
+      # Ensure the Gradle wrapper is executable on the Linux runner.
+      - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
-      - name: Decode the keystore
+
+      # Decode the signing keystore only when building a release artifact.
+      # Debug builds use Android's generated debug keystore.
+      - name: Decode release keystore
+        if: inputs.buildType == 'release'
+        shell: bash
         env:
-          ENCODED_STRING: ${{ secrets.ENCODED_KEYSTORE }}
+          ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
         run: |
-          TMP_KEYSTORE_FILE_PATH="${RUNNER_TEMP}"/keystore
-          mkdir -p "${TMP_KEYSTORE_FILE_PATH}"
-          echo "$ENCODED_STRING" | base64 -di > "${TMP_KEYSTORE_FILE_PATH}/ks.jks"
-      - name: Read release notes
-        id: readReleaseNotes
-        run: |
-          {
-            echo 'release_notes<<EOF'
-            cat RELEASE.md
-            echo EOF
-          } >> "$GITHUB_OUTPUT"
-      - name: Build APK/AAB
-        id: buildapk
-        run: |
-          buildPrefix="assemble"
-          outFormat="${{ inputs.outputFormat }}"
-          if [ "$outFormat" == 'aab' ]; then buildPrefix="bundle"; fi
-          
-          buildType="${{ inputs.buildType }}"
-          buildTypeCapitalized="$(tr '[:lower:]' '[:upper:]' <<< ${buildType:0:1})${buildType:1}"
-          buildCmd="${buildPrefix}Dev${buildTypeCapitalized}"
-          
-          ./gradlew "$buildCmd"
-          
-          ext="*.${outFormat}"
-          apk_path=$(find $PWD/app/build/outputs/ -type f -name "$ext" | head -n 1)
-          apk_size_byte=$(stat -c %s "$apk_path")
-          apk_size_mb=$(echo "${apk_size_byte}" | awk '{ $1/=1048576; printf "%.2f", $1 }')
-          apk_size="$apk_size_mb MB"
-          
-          echo "apk_path=$apk_path" >> "$GITHUB_OUTPUT"
-          echo "apk_size=$apk_size" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          mkdir -p "$(dirname "$KEYSTORE_PATH")"
+          printf '%s' "$ENCODED_KEYSTORE" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+
+      # Convert the selected options into the matching Gradle task, build the app,
+      # and return the exact artifact path for Firebase App Distribution.
+      - name: Build dev artifact
+        id: build
+        shell: bash
         env:
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
-      - name: Upload build to Drive
-        id: uploadToDrive
-        if: inputs.uploadToDrive
         run: |
-          pip install google-api-python-client google-auth-httplib2 google-auth-oauthlib
-          echo '${{ secrets.SERVICE_ACC_KEY_DEV }}' > sa.json
-          python - <<'EOF'
-          import os
-          from google.oauth2 import service_account
-          from googleapiclient.discovery import build
-          from googleapiclient.http import MediaFileUpload
+          set -euo pipefail
 
-          creds = service_account.Credentials.from_service_account_file("sa.json", scopes=["https://www.googleapis.com/auth/drive"])
-          service = build("drive", "v3", credentials=creds)
+          build_type="${{ inputs.buildType }}"
+          output_format="${{ inputs.outputFormat }}"
+          build_type_capitalized="${build_type^}"
 
-          folder_id = '${{ secrets.GG_DRIVE_FOLDER_ID }}'
-          file_path = "${{ steps.buildapk.outputs.apk_path }}"
-          file_name = os.path.basename(file_path)
-          print("Uploading:", file_path)
-          
-          file_metadata = {"name": file_name, "parents": [folder_id]}
-          media = MediaFileUpload(file_path, resumable=True)
+          if [[ "$output_format" == "aab" ]]; then
+            gradle_task="bundleDev${build_type_capitalized}"
+            output_directory="app/build/outputs/bundle/dev${build_type_capitalized}"
+          else
+            gradle_task="assembleDev${build_type_capitalized}"
+            output_directory="app/build/outputs/apk/dev/${build_type}"
+          fi
 
-          file = service.files().create(body=file_metadata, media_body=media, fields="id, webViewLink", supportsAllDrives=True).execute()
-          link = file.get("webViewLink")
-          print("Uploaded File ID:", link)
-          
-          with open(os.environ["GITHUB_OUTPUT"], "a") as fh:
-            print(f"fileLink={link}", file=fh)
-          EOF
-      - name: Upload build to Firebase
-        if: inputs.uploadToFirebase
+          gradle_args=("$gradle_task" --stacktrace)
+          if [[ "$build_type" == "release" ]]; then
+            gradle_args+=(
+              "-Pandroid.injected.signing.store.file=$KEYSTORE_PATH"
+              "-Pandroid.injected.signing.store.password=$SIGNING_STORE_PASSWORD"
+              "-Pandroid.injected.signing.key.alias=$SIGNING_KEY_ALIAS"
+              "-Pandroid.injected.signing.key.password=$SIGNING_KEY_PASSWORD"
+            )
+          fi
+
+          ./gradlew "${gradle_args[@]}"
+
+          mapfile -t artifacts < <(find "$output_directory" -maxdepth 1 -type f -name "*.${output_format}" -print)
+          if [[ "${#artifacts[@]}" -ne 1 ]]; then
+            echo "Expected one .${output_format} in $output_directory; found ${#artifacts[@]}."
+            printf '%s\n' "${artifacts[@]}"
+            exit 1
+          fi
+
+          echo "artifact_path=${artifacts[0]}" >> "$GITHUB_OUTPUT"
+
+      # Upload the generated APK or AAB to the dev Firebase App Distribution app.
+      # RELEASE.md is used as the release notes shown to testers.
+      - name: Upload artifact to Firebase App Distribution
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID_DEV }}
           serviceCredentialsFileContent: ${{ secrets.SERVICE_ACC_KEY_DEV }}
           groups: ${{ secrets.FIREBASE_TESTER_GROUPS_DEV }}
           releaseNotesFile: RELEASE.md
-          file: "${{ steps.buildapk.outputs.apk_path }}"
-      - name: Prepare result message
-        id: resultMessage
-        run: |
-          verName=$(grep -oE 'versionName\s*=\s*"[^"]+"' gradle/libs.versions.toml | awk -F '"' '{print $2}')
-          verCode=$(grep -oE 'versionCode\s*=\s*"[^"]+"' gradle/libs.versions.toml | awk -F '"' '{print $2}')
-          
-          uploadToDrive="${{ inputs.uploadToDrive }}"
-          uploadToDriveResult="No"
-          if [ "$uploadToDrive" == 'true' ]; then uploadToDriveResult="${{ steps.uploadToDrive.outputs.fileLink }}"; fi
-          
-          uploadToFirebase="${{ inputs.uploadToFirebase }}"
-          uploadToFirebaseResult="No"
-          if [ "$uploadToFirebase" == 'true' ]; then uploadToFirebaseResult="https://appdistribution.firebase.google.com/testerapps/${{secrets.FIREBASE_APP_ID_DEV}}"; fi
-          
-          echo "uploadToDriveResult=$uploadToDriveResult" >> "$GITHUB_OUTPUT"
-          echo "uploadToFirebaseResult=$uploadToFirebaseResult" >> "$GITHUB_OUTPUT"
-          echo "verName=$verName" >> "$GITHUB_OUTPUT"
-          echo "verCode=$verCode" >> "$GITHUB_OUTPUT"
-      - name: Notify build on Slack channel
-        uses: rtCamp/action-slack-notify@v2
-        env:
-          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_USERNAME: ${{ secrets.SLACK_USERNAME }}
-          SLACK_ICON: ${{ secrets.SLACK_ICON }}
-          SLACK_TITLE: "${{ secrets.APP_NAME }} build is available now!"
-          MSG_MINIMAL: true
-          SLACK_LINK_NAMES: true
-          SLACK_MESSAGE: ":black_small_square: Version: `${{ steps.resultMessage.outputs.verName }} - ${{ steps.resultMessage.outputs.verCode }}`\n:black_small_square: Environment: `dev`\n:black_small_square: Build type: `${{ inputs.buildType }}`\n:black_small_square: Output: `${{ inputs.outputFormat }}` `${{ steps.buildapk.outputs.apk_size }}`\n:black_small_square: Branch: `${{ github.ref_name }}`\n\nRelease notes:\n${{ steps.readReleaseNotes.outputs.release_notes }}\n\nGoogle Drive: ${{ steps.resultMessage.outputs.uploadToDriveResult }}\nFirebase: ${{ steps.resultMessage.outputs.uploadToFirebaseResult }}\n\ncc\n${{ secrets.SLACK_QAS }}"
-          SLACK_FOOTER: "Thanks,\nAndroid team"
+          file: ${{ steps.build.outputs.artifact_path }}
