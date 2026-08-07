@@ -23,6 +23,11 @@ on:
           - apk
           - aab
         default: apk
+      releaseNotes:
+        description: Release notes (leave empty to use RELEASE.md)
+        required: false
+        type: string
+        default: ""
 
 # Prevent an older build on the same branch from finishing after a newer build.
 concurrency:
@@ -149,6 +154,7 @@ jobs:
           SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACC_KEY_DEV }}
           TESTER_GROUPS: ${{ secrets.FIREBASE_TESTER_GROUPS_DEV }}
           ARTIFACT_PATH: ${{ steps.build.outputs.artifact_path }}
+          MANUAL_RELEASE_NOTES: ${{ inputs.releaseNotes }}
         run: |
           # 1. Write the service account JSON from secret to a temporary file
           echo "$SERVICE_ACCOUNT" > service-account.json
@@ -157,9 +163,20 @@ jobs:
           # 2. Install the Firebase CLI
           npm install -g firebase-tools
           
-          # 3. Run the upload command with --debug flag to print full request/response logs
+          # 3. Determine if we use manual release notes or the RELEASE.md file
+          if [[ -n "$MANUAL_RELEASE_NOTES" ]]; then
+            echo "Using manual release notes from workflow input."
+            RELEASE_FLAG="--release-notes"
+            RELEASE_CONTENT="$MANUAL_RELEASE_NOTES"
+          else
+            echo "Using RELEASE.md file for release notes."
+            RELEASE_FLAG="--release-notes-file"
+            RELEASE_CONTENT="RELEASE.md"
+          fi
+          
+          # 4. Run the upload command with --debug flag to print full request/response logs
           firebase appdistribution:distribute "$ARTIFACT_PATH" \
             --app "$FIREBASE_APP_ID" \
-            --release-notes-file "RELEASE.md" \
+            "$RELEASE_FLAG" "$RELEASE_CONTENT" \
             --groups "$TESTER_GROUPS" \
             --debug
