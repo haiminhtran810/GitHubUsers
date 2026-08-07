@@ -1,5 +1,6 @@
 # Build and upload the Android development flavor to Firebase App Distribution.
 name: Build dev
+run-name: Build dev (${{ inputs.buildType }} - ${{ inputs.outputFormat }})
 
 # Run this workflow manually from the GitHub Actions page.
 on:
