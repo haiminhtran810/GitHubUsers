@@ -39,9 +39,6 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
-    # Store the decoded release keystore only in the runner's temporary directory.
-    env:
-      KEYSTORE_PATH: ${{ runner.temp }}/keystore/ks.jks
 
     steps:
       # Check Firebase credentials for every build and signing credentials for release builds.
@@ -90,6 +87,7 @@ jobs:
         shell: bash
         env:
           ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
+          KEYSTORE_PATH: ${{ runner.temp }}/keystore/ks.jks
         run: |
           set -euo pipefail
           mkdir -p "$(dirname "$KEYSTORE_PATH")"
@@ -105,6 +103,7 @@ jobs:
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEYSTORE_PATH: ${{ runner.temp }}/keystore/ks.jks
         run: |
           set -euo pipefail
 
