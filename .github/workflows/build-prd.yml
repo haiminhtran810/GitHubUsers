@@ -1,0 +1,196 @@
+# Build and upload the Android production flavor to Firebase App Distribution and/or Google Play.
+name: Build prd
+run-name: Build prd (release - ${{ inputs.outputFormat }})
+
+# Run this workflow manually from the GitHub Actions page.
+on:
+  workflow_dispatch:
+    inputs:
+      outputFormat:
+        # APK is directly installable. AAB is required for Google Play.
+        description: Output format (AAB required for Google Play)
+        required: true
+        type: choice
+        options:
+          - apk
+          - aab
+        default: aab
+      uploadToFirebase:
+        description: Upload to Firebase App Distribution
+        required: true
+        type: boolean
+        default: true
+      uploadToGooglePlay:
+        description: Upload to Google Play Internal Testing (AAB only)
+        required: true
+        type: boolean
+        default: false
+      releaseNotes:
+        description: Release notes (leave empty to use RELEASE.md)
+        required: false
+        type: string
+        default: ""
+
+# Prevent an older build on the same branch from finishing after a newer build.
+concurrency:
+  group: build-prd-${{ github.ref }}
+  cancel-in-progress: true
+
+# The workflow only needs permission to clone the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and upload prd
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      # Check Firebase and Google Play credentials
+      - name: Validate required secrets
+        shell: bash
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_PRD }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACC_KEY_PRD }}
+          ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          PLAY_CONSOLE_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_CONSOLE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ inputs.uploadToFirebase }}" == "true" ]]; then
+            [[ -n "$FIREBASE_APP_ID" ]] || { echo "Missing secret: FIREBASE_APP_ID_PRD"; exit 1; }
+            [[ -n "$FIREBASE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: SERVICE_ACC_KEY_PRD"; exit 1; }
+          fi
+
+          if [[ "${{ inputs.uploadToGooglePlay }}" == "true" ]]; then
+            if [[ "${{ inputs.outputFormat }}" != "aab" ]]; then
+              echo "Error: You must select 'aab' as the output format to upload to Google Play."
+              exit 1
+            fi
+            [[ -n "$PLAY_CONSOLE_SERVICE_ACCOUNT_JSON" ]] || { echo "Missing secret: PLAY_CONSOLE_SERVICE_ACCOUNT_JSON"; exit 1; }
+          fi
+
+          # Production is always release, so signing credentials are required
+          [[ -n "$ENCODED_KEYSTORE" ]] || { echo "Missing secret: ENCODED_KEYSTORE"; exit 1; }
+          [[ -n "$SIGNING_KEY_ALIAS" ]] || { echo "Missing secret: SIGNING_KEY_ALIAS"; exit 1; }
+          [[ -n "$SIGNING_KEY_PASSWORD" ]] || { echo "Missing secret: SIGNING_KEY_PASSWORD"; exit 1; }
+          [[ -n "$SIGNING_STORE_PASSWORD" ]] || { echo "Missing secret: SIGNING_STORE_PASSWORD"; exit 1; }
+
+      # Download the exact commit that started this workflow.
+      - name: Check out source code
+        uses: actions/checkout@v4
+
+      # Install Java and restore cached Gradle dependencies.
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "21"
+          cache: gradle
+
+      # Ensure the Gradle wrapper is executable on the Linux runner.
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      # Decode the signing keystore.
+      - name: Decode release keystore
+        shell: bash
+        env:
+          ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
+          KEYSTORE_PATH: ${{ runner.temp }}/keystore/ks.jks
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$KEYSTORE_PATH")"
+          printf '%s' "$ENCODED_KEYSTORE" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+
+      # Convert the selected options into the matching Gradle task, build the app,
+      # and return the exact artifact path.
+      - name: Build prd artifact
+        id: build
+        shell: bash
+        env:
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEYSTORE_PATH: ${{ runner.temp }}/keystore/ks.jks
+        run: |
+          set -euo pipefail
+
+          # PRD is always release
+          output_format="${{ inputs.outputFormat }}"
+
+          if [[ "$output_format" == "aab" ]]; then
+            gradle_task="bundlePrdRelease"
+            output_directory="app/build/outputs/bundle/prdRelease"
+          else
+            gradle_task="assemblePrdRelease"
+            output_directory="app/build/outputs/apk/prd/release"
+          fi
+
+          gradle_args=(
+            "$gradle_task" 
+            --stacktrace
+            "-Pandroid.injected.signing.store.file=$KEYSTORE_PATH"
+            "-Pandroid.injected.signing.store.password=$SIGNING_STORE_PASSWORD"
+            "-Pandroid.injected.signing.key.alias=$SIGNING_KEY_ALIAS"
+            "-Pandroid.injected.signing.key.password=$SIGNING_KEY_PASSWORD"
+          )
+
+          ./gradlew "${gradle_args[@]}"
+
+          mapfile -t artifacts < <(find "$output_directory" -maxdepth 1 -type f -name "*.${output_format}" -print)
+          if [[ "${#artifacts[@]}" -ne 1 ]]; then
+            echo "Expected one .${output_format} in $output_directory; found ${#artifacts[@]}."
+            printf '%s\n' "${artifacts[@]}"
+            exit 1
+          fi
+
+          echo "artifact_path=${artifacts[0]}" >> "$GITHUB_OUTPUT"
+
+      # Upload the generated APK or AAB to Firebase App Distribution using Firebase CLI directly.
+      - name: Upload artifact using Firebase CLI
+        if: inputs.uploadToFirebase == true
+        shell: bash
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_PRD }}
+          SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACC_KEY_PRD }}
+          TESTER_GROUPS: ${{ secrets.FIREBASE_TESTER_GROUPS_PRD }}
+          ARTIFACT_PATH: ${{ steps.build.outputs.artifact_path }}
+          MANUAL_RELEASE_NOTES: ${{ inputs.releaseNotes }}
+        run: |
+          echo "$SERVICE_ACCOUNT" > service-account.json
+          export GOOGLE_APPLICATION_CREDENTIALS="service-account.json"
+          
+          npm install -g firebase-tools
+          
+          if [[ -n "$MANUAL_RELEASE_NOTES" ]]; then
+            echo "Using manual release notes from workflow input."
+            RELEASE_FLAG="--release-notes"
+            RELEASE_CONTENT="$MANUAL_RELEASE_NOTES"
+          else
+            echo "Using RELEASE.md file for release notes."
+            RELEASE_FLAG="--release-notes-file"
+            RELEASE_CONTENT="RELEASE.md"
+          fi
+          
+          firebase appdistribution:distribute "$ARTIFACT_PATH" \
+            --app "$FIREBASE_APP_ID" \
+            "$RELEASE_FLAG" "$RELEASE_CONTENT" \
+            --groups "$TESTER_GROUPS" \
+            --debug
+
+      # Upload to Google Play Internal Testing
+      - name: Upload to Google Play (Internal Testing)
+        if: inputs.uploadToGooglePlay == true
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_CONSOLE_SERVICE_ACCOUNT_JSON }}
+          packageName: tmh.nhoctax.githubusers
+          releaseFiles: ${{ steps.build.outputs.artifact_path }}
+          track: internal
+          status: completed

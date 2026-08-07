@@ -1,0 +1,183 @@
+# Build and upload the Android staging flavor to Firebase App Distribution.
+name: Build stg
+run-name: Build stg (${{ inputs.buildType }} - ${{ inputs.outputFormat }})
+
+# Run this workflow manually from the GitHub Actions page.
+on:
+  workflow_dispatch:
+    inputs:
+      buildType:
+        # Select the Gradle build type: DevDebug or DevRelease.
+        description: Build type
+        required: true
+        type: choice
+        options:
+          - debug
+          - release
+        default: debug
+      outputFormat:
+        # APK is directly installable. AAB requires Firebase to be linked to Google Play.
+        description: Output format
+        required: true
+        type: choice
+        options:
+          - apk
+          - aab
+        default: apk
+      releaseNotes:
+        description: Release notes (leave empty to use RELEASE.md)
+        required: false
+        type: string
+        default: ""
+
+# Prevent an older build on the same branch from finishing after a newer build.
+concurrency:
+  group: build-stg-${{ github.ref }}
+  cancel-in-progress: true
+
+# The workflow only needs permission to clone the repository.
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and upload stg to Firebase
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+
+    steps:
+      # Check Firebase credentials for every build and signing credentials for release builds.
+      - name: Validate required secrets
+        shell: bash
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_STG }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACC_KEY_STG }}
+          ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          [[ -n "$FIREBASE_APP_ID" ]] || { echo "Missing secret: FIREBASE_APP_ID_STG"; exit 1; }
+          [[ -n "$FIREBASE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: SERVICE_ACC_KEY_STG"; exit 1; }
+
+          if [[ "${{ inputs.buildType }}" == "release" ]]; then
+            [[ -n "$ENCODED_KEYSTORE" ]] || { echo "Missing secret: ENCODED_KEYSTORE"; exit 1; }
+            [[ -n "$SIGNING_KEY_ALIAS" ]] || { echo "Missing secret: SIGNING_KEY_ALIAS"; exit 1; }
+            [[ -n "$SIGNING_KEY_PASSWORD" ]] || { echo "Missing secret: SIGNING_KEY_PASSWORD"; exit 1; }
+            [[ -n "$SIGNING_STORE_PASSWORD" ]] || { echo "Missing secret: SIGNING_STORE_PASSWORD"; exit 1; }
+          fi
+
+      # Download the exact commit that started this workflow.
+      - name: Check out source code
+        uses: actions/checkout@v4
+
+      # Install Java and restore cached Gradle dependencies.
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: "21"
+          cache: gradle
+
+      # Ensure the Gradle wrapper is executable on the Linux runner.
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      # Decode the signing keystore only when building a release artifact.
+      # Debug builds use Android's generated debug keystore.
+      - name: Decode release keystore
+        if: inputs.buildType == 'release'
+        shell: bash
+        env:
+          ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
+          KEYSTORE_PATH: ${{ runner.temp }}/keystore/ks.jks
+        run: |
+          set -euo pipefail
+          mkdir -p "$(dirname "$KEYSTORE_PATH")"
+          printf '%s' "$ENCODED_KEYSTORE" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+
+      # Convert the selected options into the matching Gradle task, build the app,
+      # and return the exact artifact path for Firebase App Distribution.
+      - name: Build dev artifact
+        id: build
+        shell: bash
+        env:
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          KEYSTORE_PATH: ${{ runner.temp }}/keystore/ks.jks
+        run: |
+          set -euo pipefail
+
+          build_type="${{ inputs.buildType }}"
+          output_format="${{ inputs.outputFormat }}"
+          build_type_capitalized="${build_type^}"
+
+          if [[ "$output_format" == "aab" ]]; then
+            gradle_task="bundleStg${build_type_capitalized}"
+            output_directory="app/build/outputs/bundle/stg${build_type_capitalized}"
+          else
+            gradle_task="assembleStg${build_type_capitalized}"
+            output_directory="app/build/outputs/apk/stg/${build_type}"
+          fi
+
+          gradle_args=("$gradle_task" --stacktrace)
+          if [[ "$build_type" == "release" ]]; then
+            gradle_args+=(
+              "-Pandroid.injected.signing.store.file=$KEYSTORE_PATH"
+              "-Pandroid.injected.signing.store.password=$SIGNING_STORE_PASSWORD"
+              "-Pandroid.injected.signing.key.alias=$SIGNING_KEY_ALIAS"
+              "-Pandroid.injected.signing.key.password=$SIGNING_KEY_PASSWORD"
+            )
+          fi
+
+          ./gradlew "${gradle_args[@]}"
+
+          mapfile -t artifacts < <(find "$output_directory" -maxdepth 1 -type f -name "*.${output_format}" -print)
+          if [[ "${#artifacts[@]}" -ne 1 ]]; then
+            echo "Expected one .${output_format} in $output_directory; found ${#artifacts[@]}."
+            printf '%s\n' "${artifacts[@]}"
+            exit 1
+          fi
+
+          echo "artifact_path=${artifacts[0]}" >> "$GITHUB_OUTPUT"
+
+      # Upload the generated APK or AAB to the stg Firebase App Distribution app using Firebase CLI directly.
+      # This provides better debug output if something goes wrong.
+      - name: Upload artifact using Firebase CLI
+        shell: bash
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_STG }}
+          SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACC_KEY_STG }}
+          TESTER_GROUPS: ${{ secrets.FIREBASE_TESTER_GROUPS_STG }}
+          ARTIFACT_PATH: ${{ steps.build.outputs.artifact_path }}
+          MANUAL_RELEASE_NOTES: ${{ inputs.releaseNotes }}
+        run: |
+          # 1. Write the service account JSON from secret to a temporary file
+          echo "$SERVICE_ACCOUNT" > service-account.json
+          export GOOGLE_APPLICATION_CREDENTIALS="service-account.json"
+          
+          # 2. Install the Firebase CLI
+          npm install -g firebase-tools
+          
+          # 3. Determine if we use manual release notes or the RELEASE.md file
+          if [[ -n "$MANUAL_RELEASE_NOTES" ]]; then
+            echo "Using manual release notes from workflow input."
+            RELEASE_FLAG="--release-notes"
+            RELEASE_CONTENT="$MANUAL_RELEASE_NOTES"
+          else
+            echo "Using RELEASE.md file for release notes."
+            RELEASE_FLAG="--release-notes-file"
+            RELEASE_CONTENT="RELEASE.md"
+          fi
+          
+          # 4. Run the upload command with --debug flag to print full request/response logs
+          firebase appdistribution:distribute "$ARTIFACT_PATH" \
+            --app "$FIREBASE_APP_ID" \
+            "$RELEASE_FLAG" "$RELEASE_CONTENT" \
+            --groups "$TESTER_GROUPS" \
+            --debug
