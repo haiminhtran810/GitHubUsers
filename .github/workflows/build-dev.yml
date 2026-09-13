@@ -53,7 +53,7 @@ jobs:
         env:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_DEV }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACC_KEY_DEV }}
-          GOOGLE_DRIVE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_DRIVE_SERVICE_ACCOUNT }}
+          GOOGLE_DRIVE_TOKEN_JSON: ${{ secrets.GOOGLE_DRIVE_TOKEN_JSON }}
           GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
           ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
@@ -64,11 +64,15 @@ jobs:
 
           [[ -n "$FIREBASE_APP_ID" ]] || { echo "Missing secret: FIREBASE_APP_ID_DEV"; exit 1; }
           [[ -n "$FIREBASE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: SERVICE_ACC_KEY_DEV"; exit 1; }
-          [[ -n "$GOOGLE_DRIVE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: GOOGLE_DRIVE_SERVICE_ACCOUNT"; exit 1; }
+          [[ -n "$GOOGLE_DRIVE_TOKEN_JSON" ]] || { echo "Missing secret: GOOGLE_DRIVE_TOKEN_JSON"; exit 1; }
           [[ -n "$GOOGLE_DRIVE_FOLDER_ID" ]] || { echo "Missing secret: GOOGLE_DRIVE_FOLDER_ID"; exit 1; }
-          jq -e '.type == "service_account" and (.client_email | type == "string") and (.private_key | type == "string")' \
-            <<< "$GOOGLE_DRIVE_SERVICE_ACCOUNT" > /dev/null || {
-              echo "GOOGLE_DRIVE_SERVICE_ACCOUNT is not a valid service-account JSON credential."
+          jq -e '
+            (.refresh_token | type == "string" and length > 0) and
+            (.token_uri | type == "string" and length > 0) and
+            (.client_id | type == "string" and length > 0) and
+            (.client_secret | type == "string" and length > 0)
+          ' <<< "$GOOGLE_DRIVE_TOKEN_JSON" > /dev/null || {
+              echo "GOOGLE_DRIVE_TOKEN_JSON is not a valid OAuth authorized-user token."
               exit 1
             }
 
@@ -192,13 +196,13 @@ jobs:
             --debug
 
       # Upload the same APK or AAB to the configured Google Drive folder.
-      # The destination folder must be shared with the service account's client_email.
+      # Upload as the OAuth user who owns or can edit the configured My Drive folder.
       - name: Upload artifact to Google Drive
         id: google-drive
         if: always() && steps.build.outcome == 'success'
         shell: bash
         env:
-          GOOGLE_DRIVE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_DRIVE_SERVICE_ACCOUNT }}
+          GOOGLE_DRIVE_TOKEN_JSON: ${{ secrets.GOOGLE_DRIVE_TOKEN_JSON }}
           GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
           ARTIFACT_PATH: ${{ steps.build.outputs.artifact_path }}
           BUILD_TYPE: ${{ inputs.buildType }}
@@ -220,7 +224,8 @@ jobs:
           import os
           from pathlib import Path
 
-          from google.oauth2 import service_account
+          from google.auth.transport.requests import Request
+          from google.oauth2.credentials import Credentials
           from googleapiclient.discovery import build
           from googleapiclient.http import MediaFileUpload
 
@@ -240,10 +245,17 @@ jobs:
               f"{output_format}"
           )
 
-          credentials = service_account.Credentials.from_service_account_info(
-              json.loads(os.environ["GOOGLE_DRIVE_SERVICE_ACCOUNT"]),
-              scopes=["https://www.googleapis.com/auth/drive"],
+          scopes = ["https://www.googleapis.com/auth/drive"]
+          credentials = Credentials.from_authorized_user_info(
+              json.loads(os.environ["GOOGLE_DRIVE_TOKEN_JSON"]),
+              scopes=scopes,
           )
+          if not credentials.valid:
+              if credentials.refresh_token:
+                  credentials.refresh(Request())
+              else:
+                  raise RuntimeError("The Google Drive OAuth token cannot be refreshed.")
+
           drive = build("drive", "v3", credentials=credentials, cache_discovery=False)
           media = MediaFileUpload(
               str(artifact_path),
@@ -257,7 +269,6 @@ jobs:
               },
               media_body=media,
               fields="id,name,webViewLink",
-              supportsAllDrives=True,
           )
 
           response = None
