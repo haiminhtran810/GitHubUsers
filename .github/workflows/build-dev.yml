@@ -1,4 +1,4 @@
-# Build and upload the Android development flavor to Firebase App Distribution.
+# Build and upload the Android development flavor to Firebase App Distribution and Google Drive.
 name: Build dev
 run-name: Build dev (${{ inputs.buildType }} - ${{ inputs.outputFormat }})
 
@@ -41,7 +41,7 @@ permissions:
 
 jobs:
   build:
-    name: Build and upload dev to Firebase
+    name: Build and upload dev
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
@@ -53,6 +53,8 @@ jobs:
         env:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_DEV }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACC_KEY_DEV }}
+          GOOGLE_DRIVE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_DRIVE_SERVICE_ACCOUNT }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
           ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
@@ -62,6 +64,13 @@ jobs:
 
           [[ -n "$FIREBASE_APP_ID" ]] || { echo "Missing secret: FIREBASE_APP_ID_DEV"; exit 1; }
           [[ -n "$FIREBASE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: SERVICE_ACC_KEY_DEV"; exit 1; }
+          [[ -n "$GOOGLE_DRIVE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: GOOGLE_DRIVE_SERVICE_ACCOUNT"; exit 1; }
+          [[ -n "$GOOGLE_DRIVE_FOLDER_ID" ]] || { echo "Missing secret: GOOGLE_DRIVE_FOLDER_ID"; exit 1; }
+          jq -e '.type == "service_account" and (.client_email | type == "string") and (.private_key | type == "string")' \
+            <<< "$GOOGLE_DRIVE_SERVICE_ACCOUNT" > /dev/null || {
+              echo "GOOGLE_DRIVE_SERVICE_ACCOUNT is not a valid service-account JSON credential."
+              exit 1
+            }
 
           if [[ "${{ inputs.buildType }}" == "release" ]]; then
             [[ -n "$ENCODED_KEYSTORE" ]] || { echo "Missing secret: ENCODED_KEYSTORE"; exit 1; }
@@ -181,3 +190,85 @@ jobs:
             "$RELEASE_FLAG" "$RELEASE_CONTENT" \
             --groups "$TESTER_GROUPS" \
             --debug
+
+      # Upload the same APK or AAB to the configured Google Drive folder.
+      # The destination folder must be shared with the service account's client_email.
+      - name: Upload artifact to Google Drive
+        id: google-drive
+        if: always() && steps.build.outcome == 'success'
+        shell: bash
+        env:
+          GOOGLE_DRIVE_SERVICE_ACCOUNT: ${{ secrets.GOOGLE_DRIVE_SERVICE_ACCOUNT }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          ARTIFACT_PATH: ${{ steps.build.outputs.artifact_path }}
+          BUILD_TYPE: ${{ inputs.buildType }}
+          OUTPUT_FORMAT: ${{ inputs.outputFormat }}
+          RUN_NUMBER: ${{ github.run_number }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          python3 -m venv "$RUNNER_TEMP/google-drive-venv"
+          "$RUNNER_TEMP/google-drive-venv/bin/pip" install \
+            --disable-pip-version-check \
+            --quiet \
+            google-api-python-client \
+            google-auth
+
+          "$RUNNER_TEMP/google-drive-venv/bin/python" <<'PYTHON'
+          import json
+          import os
+          from pathlib import Path
+
+          from google.oauth2 import service_account
+          from googleapiclient.discovery import build
+          from googleapiclient.http import MediaFileUpload
+
+
+          artifact_path = Path(os.environ["ARTIFACT_PATH"])
+          if not artifact_path.is_file():
+              raise FileNotFoundError(f"Artifact not found: {artifact_path}")
+
+          output_format = os.environ["OUTPUT_FORMAT"]
+          mime_types = {
+              "apk": "application/vnd.android.package-archive",
+              "aab": "application/octet-stream",
+          }
+          artifact_name = (
+              f"github-users-dev-{os.environ['BUILD_TYPE']}-"
+              f"{os.environ['RUN_NUMBER']}-{os.environ['COMMIT_SHA'][:7]}."
+              f"{output_format}"
+          )
+
+          credentials = service_account.Credentials.from_service_account_info(
+              json.loads(os.environ["GOOGLE_DRIVE_SERVICE_ACCOUNT"]),
+              scopes=["https://www.googleapis.com/auth/drive"],
+          )
+          drive = build("drive", "v3", credentials=credentials, cache_discovery=False)
+          media = MediaFileUpload(
+              str(artifact_path),
+              mimetype=mime_types[output_format],
+              resumable=True,
+          )
+          request = drive.files().create(
+              body={
+                  "name": artifact_name,
+                  "parents": [os.environ["GOOGLE_DRIVE_FOLDER_ID"]],
+              },
+              media_body=media,
+              fields="id,name,webViewLink",
+              supportsAllDrives=True,
+          )
+
+          response = None
+          while response is None:
+              status, response = request.next_chunk()
+              if status:
+                  print(f"Google Drive upload progress: {int(status.progress() * 100)}%")
+
+          print(f"Uploaded {response['name']} to Google Drive: {response.get('webViewLink', response['id'])}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"file_id={response['id']}\n")
+              if response.get("webViewLink"):
+                  output.write(f"file_url={response['webViewLink']}\n")
+          PYTHON
