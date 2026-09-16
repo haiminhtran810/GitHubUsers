@@ -1,4 +1,5 @@
-# Build and upload the Android development flavor to Firebase App Distribution and Google Drive.
+# Build the Android development flavor, upload APKs to Firebase App Distribution,
+# and upload both APKs and AABs to Google Drive.
 name: Build dev
 run-name: Build dev (${{ inputs.buildType }} - ${{ inputs.outputFormat }})
 
@@ -16,7 +17,8 @@ on:
           - release
         default: debug
       outputFormat:
-        # APK is directly installable. AAB requires Firebase to be linked to Google Play.
+        # APK is uploaded to Firebase and Google Drive. AAB is uploaded only to Google Drive.
+        # The dev app does not need to be linked to a Google Play account.
         description: Output format
         required: true
         type: choice
@@ -47,7 +49,7 @@ jobs:
 
 
     steps:
-      # Check Firebase credentials for every build and signing credentials for release builds.
+      # Check Firebase credentials for APK builds and signing credentials for release builds.
       - name: Validate required secrets
         shell: bash
         env:
@@ -63,8 +65,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          [[ -n "$FIREBASE_APP_ID" ]] || { echo "Missing secret: FIREBASE_APP_ID_DEV"; exit 1; }
-          [[ -n "$FIREBASE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: SERVICE_ACC_KEY_DEV"; exit 1; }
+          if [[ "${{ inputs.outputFormat }}" == "apk" ]]; then
+            [[ -n "$FIREBASE_APP_ID" ]] || { echo "Missing secret: FIREBASE_APP_ID_DEV"; exit 1; }
+            [[ -n "$FIREBASE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: SERVICE_ACC_KEY_DEV"; exit 1; }
+          fi
           [[ -n "$GOOGLE_DRIVE_TOKEN_JSON" ]] || { echo "Missing secret: GOOGLE_DRIVE_TOKEN_JSON"; exit 1; }
           [[ -n "$GOOGLE_DRIVE_FOLDER_ID" ]] || { echo "Missing secret: GOOGLE_DRIVE_FOLDER_ID"; exit 1; }
           [[ -n "$SLACK_WEBHOOK_URL" ]] || { echo "Missing secret: SLACK_WEBHOOK_URL"; exit 1; }
@@ -116,7 +120,7 @@ jobs:
           test -s "$KEYSTORE_PATH"
 
       # Convert the selected options into the matching Gradle task, build the app,
-      # and return the exact artifact path for Firebase App Distribution.
+      # and return the exact artifact path for the configured upload destinations.
       - name: Build dev artifact
         id: build
         shell: bash
@@ -161,9 +165,11 @@ jobs:
 
           echo "artifact_path=${artifacts[0]}" >> "$GITHUB_OUTPUT"
 
-      # Upload the generated APK or AAB to the dev Firebase App Distribution app using Firebase CLI directly.
+      # Upload APKs to the dev Firebase App Distribution app using Firebase CLI directly.
+      # AABs skip this step because Firebase requires a linked Google Play app for AAB distribution.
       # This provides better debug output if something goes wrong.
       - name: Upload artifact using Firebase CLI
+        if: inputs.outputFormat == 'apk'
         shell: bash
         env:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_DEV }}
