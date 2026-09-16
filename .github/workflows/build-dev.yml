@@ -55,6 +55,7 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACC_KEY_DEV }}
           GOOGLE_DRIVE_TOKEN_JSON: ${{ secrets.GOOGLE_DRIVE_TOKEN_JSON }}
           GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
@@ -66,6 +67,7 @@ jobs:
           [[ -n "$FIREBASE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: SERVICE_ACC_KEY_DEV"; exit 1; }
           [[ -n "$GOOGLE_DRIVE_TOKEN_JSON" ]] || { echo "Missing secret: GOOGLE_DRIVE_TOKEN_JSON"; exit 1; }
           [[ -n "$GOOGLE_DRIVE_FOLDER_ID" ]] || { echo "Missing secret: GOOGLE_DRIVE_FOLDER_ID"; exit 1; }
+          [[ -n "$SLACK_WEBHOOK_URL" ]] || { echo "Missing secret: SLACK_WEBHOOK_URL"; exit 1; }
           jq -e '
             (.refresh_token | type == "string" and length > 0) and
             (.token_uri | type == "string" and length > 0) and
@@ -283,3 +285,72 @@ jobs:
               if response.get("webViewLink"):
                   output.write(f"file_url={response['webViewLink']}\n")
           PYTHON
+
+      # Report the final build result to Slack, even when an earlier step fails.
+      - name: Notify Slack
+        if: always()
+        shell: bash
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          JOB_STATUS: ${{ job.status }}
+          BUILD_TYPE: ${{ inputs.buildType }}
+          OUTPUT_FORMAT: ${{ inputs.outputFormat }}
+          GOOGLE_DRIVE_URL: ${{ steps.google-drive.outputs.file_url }}
+          COMMIT_SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          case "$JOB_STATUS" in
+            success)
+              status_label=Succeeded
+              status_emoji=":white_check_mark:"
+              ;;
+            cancelled)
+              status_label=Cancelled
+              status_emoji=":warning:"
+              ;;
+            *)
+              status_label=Failed
+              status_emoji=":x:"
+              ;;
+          esac
+
+          drive_line=""
+          if [[ -n "$GOOGLE_DRIVE_URL" ]]; then
+            drive_line="$(printf '\n*Google Drive:* <%s|Download artifact>' "$GOOGLE_DRIVE_URL")"
+          fi
+
+          payload="$(jq -n \
+            --arg emoji "$status_emoji" \
+            --arg status "$status_label" \
+            --arg repository "$REPOSITORY" \
+            --arg build_type "$BUILD_TYPE" \
+            --arg output_format "$OUTPUT_FORMAT" \
+            --arg actor "$ACTOR" \
+            --arg commit "${COMMIT_SHA:0:7}" \
+            --arg run_url "$RUN_URL" \
+            --arg drive_line "$drive_line" \
+            '{
+              text: ($emoji + " Dev build " + $status + " for " + $repository),
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: ($emoji + " *Dev build " + $status + "*\n*Repository:* " + $repository + "\n*Build:* " + $build_type + " / " + $output_format + "\n*Commit:* `" + $commit + "`\n*Triggered by:* " + $actor + $drive_line + "\n<" + $run_url + "|View GitHub Actions run>")
+                  }
+                }
+              ]
+            }')"
+
+          curl \
+            --fail-with-body \
+            --show-error \
+            --silent \
+            --retry 2 \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "$SLACK_WEBHOOK_URL"

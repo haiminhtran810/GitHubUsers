@@ -53,6 +53,7 @@ jobs:
         env:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID_STG }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.SERVICE_ACC_KEY_STG }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           ENCODED_KEYSTORE: ${{ secrets.ENCODED_KEYSTORE }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
@@ -62,6 +63,7 @@ jobs:
 
           [[ -n "$FIREBASE_APP_ID" ]] || { echo "Missing secret: FIREBASE_APP_ID_STG"; exit 1; }
           [[ -n "$FIREBASE_SERVICE_ACCOUNT" ]] || { echo "Missing secret: SERVICE_ACC_KEY_STG"; exit 1; }
+          [[ -n "$SLACK_WEBHOOK_URL" ]] || { echo "Missing secret: SLACK_WEBHOOK_URL"; exit 1; }
 
           if [[ "${{ inputs.buildType }}" == "release" ]]; then
             [[ -n "$ENCODED_KEYSTORE" ]] || { echo "Missing secret: ENCODED_KEYSTORE"; exit 1; }
@@ -181,3 +183,65 @@ jobs:
             "$RELEASE_FLAG" "$RELEASE_CONTENT" \
             --groups "$TESTER_GROUPS" \
             --debug
+
+      # Report the final build result to Slack, even when an earlier step fails.
+      - name: Notify Slack
+        if: always()
+        shell: bash
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          JOB_STATUS: ${{ job.status }}
+          BUILD_TYPE: ${{ inputs.buildType }}
+          OUTPUT_FORMAT: ${{ inputs.outputFormat }}
+          COMMIT_SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          case "$JOB_STATUS" in
+            success)
+              status_label=Succeeded
+              status_emoji=":white_check_mark:"
+              ;;
+            cancelled)
+              status_label=Cancelled
+              status_emoji=":warning:"
+              ;;
+            *)
+              status_label=Failed
+              status_emoji=":x:"
+              ;;
+          esac
+
+          payload="$(jq -n \
+            --arg emoji "$status_emoji" \
+            --arg status "$status_label" \
+            --arg repository "$REPOSITORY" \
+            --arg build_type "$BUILD_TYPE" \
+            --arg output_format "$OUTPUT_FORMAT" \
+            --arg actor "$ACTOR" \
+            --arg commit "${COMMIT_SHA:0:7}" \
+            --arg run_url "$RUN_URL" \
+            '{
+              text: ($emoji + " Staging build " + $status + " for " + $repository),
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: ($emoji + " *Staging build " + $status + "*\n*Repository:* " + $repository + "\n*Build:* " + $build_type + " / " + $output_format + "\n*Commit:* `" + $commit + "`\n*Triggered by:* " + $actor + "\n<" + $run_url + "|View GitHub Actions run>")
+                  }
+                }
+              ]
+            }')"
+
+          curl \
+            --fail-with-body \
+            --show-error \
+            --silent \
+            --retry 2 \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "$SLACK_WEBHOOK_URL"

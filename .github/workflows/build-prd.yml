@@ -58,6 +58,7 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
           PLAY_CONSOLE_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_CONSOLE_SERVICE_ACCOUNT_JSON }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         run: |
           set -euo pipefail
 
@@ -79,6 +80,7 @@ jobs:
           [[ -n "$SIGNING_KEY_ALIAS" ]] || { echo "Missing secret: SIGNING_KEY_ALIAS"; exit 1; }
           [[ -n "$SIGNING_KEY_PASSWORD" ]] || { echo "Missing secret: SIGNING_KEY_PASSWORD"; exit 1; }
           [[ -n "$SIGNING_STORE_PASSWORD" ]] || { echo "Missing secret: SIGNING_STORE_PASSWORD"; exit 1; }
+          [[ -n "$SLACK_WEBHOOK_URL" ]] || { echo "Missing secret: SLACK_WEBHOOK_URL"; exit 1; }
 
       # Download the exact commit that started this workflow.
       - name: Check out source code
@@ -194,3 +196,67 @@ jobs:
           releaseFiles: ${{ steps.build.outputs.artifact_path }}
           track: internal
           status: completed
+
+      # Report the final build result to Slack, even when an earlier step fails.
+      - name: Notify Slack
+        if: always()
+        shell: bash
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          JOB_STATUS: ${{ job.status }}
+          OUTPUT_FORMAT: ${{ inputs.outputFormat }}
+          UPLOAD_TO_FIREBASE: ${{ inputs.uploadToFirebase }}
+          UPLOAD_TO_GOOGLE_PLAY: ${{ inputs.uploadToGooglePlay }}
+          COMMIT_SHA: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          case "$JOB_STATUS" in
+            success)
+              status_label=Succeeded
+              status_emoji=":white_check_mark:"
+              ;;
+            cancelled)
+              status_label=Cancelled
+              status_emoji=":warning:"
+              ;;
+            *)
+              status_label=Failed
+              status_emoji=":x:"
+              ;;
+          esac
+
+          payload="$(jq -n \
+            --arg emoji "$status_emoji" \
+            --arg status "$status_label" \
+            --arg repository "$REPOSITORY" \
+            --arg output_format "$OUTPUT_FORMAT" \
+            --arg upload_to_firebase "$UPLOAD_TO_FIREBASE" \
+            --arg upload_to_google_play "$UPLOAD_TO_GOOGLE_PLAY" \
+            --arg actor "$ACTOR" \
+            --arg commit "${COMMIT_SHA:0:7}" \
+            --arg run_url "$RUN_URL" \
+            '{
+              text: ($emoji + " Production build " + $status + " for " + $repository),
+              blocks: [
+                {
+                  type: "section",
+                  text: {
+                    type: "mrkdwn",
+                    text: ($emoji + " *Production build " + $status + "*\n*Repository:* " + $repository + "\n*Build:* release / " + $output_format + "\n*Upload to Firebase:* " + $upload_to_firebase + "\n*Upload to Google Play:* " + $upload_to_google_play + "\n*Commit:* `" + $commit + "`\n*Triggered by:* " + $actor + "\n<" + $run_url + "|View GitHub Actions run>")
+                  }
+                }
+              ]
+            }')"
+
+          curl \
+            --fail-with-body \
+            --show-error \
+            --silent \
+            --retry 2 \
+            --header 'Content-Type: application/json' \
+            --data "$payload" \
+            "$SLACK_WEBHOOK_URL"
